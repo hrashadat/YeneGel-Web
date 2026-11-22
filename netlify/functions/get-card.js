@@ -1,9 +1,11 @@
+const { getSupabaseUrl } = require('../lib/supabase');
+
 exports.handler = async (event) => {
   try {
     const slug = event.queryStringParameters?.slug || 'kaya';
     const visitorToken = event.queryStringParameters?.visitorToken;
 
-    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseUrl = getSupabaseUrl();
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     const restRes = await fetch(

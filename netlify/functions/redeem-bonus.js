@@ -1,3 +1,5 @@
+const { getSupabaseUrl } = require('../lib/supabase');
+
 exports.handler = async (event) => {
   try {
     if (event.httpMethod !== 'POST') {
@@ -9,7 +11,7 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'Məlumat natamamdır.' }) };
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseUrl = getSupabaseUrl();
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const headers = {
       apikey: supabaseKey,
