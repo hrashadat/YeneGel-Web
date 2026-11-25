@@ -490,7 +490,7 @@
       <div class="loyalty-card-top">
         <div class="merchant-heading">
           <div id="restName" class="rest-name">Yüklənir...</div>
-          <div id="rewardBanner" class="reward-banner">VIP BONUS</div>
+          <div id="rewardBanner" class="reward-banner">BONUS</div>
         </div>
         <div id="stampsGrid" class="stamps-grid"></div>
         <div id="progressText" class="progress-text">0 / 5 çəntik</div>
@@ -624,7 +624,7 @@
         const c = stateCard || { stamps_count: 0, reward_unlocked: false, total_spent: 0, bonus_balance: 0 };
 
         restNameEl.textContent = r.name || slug;
-        rewardBannerEl.textContent = r.reward_text || 'VIP BONUS';
+        rewardBannerEl.textContent = r.reward_text || 'BONUS';
 
         const goal = Math.max(1, Number(r.stamp_goal || 5));
         const stamps = Math.max(0, Number(c.stamps_count || 0));
