@@ -6,60 +6,59 @@
   <title>Yenə gəl — Rəqəmsal Sadiqlik Kartı</title>
   <style>
     :root {
-      --bg-dark: #071a12;
-      --bg-surface: #0d261a;
-      --bg-card: #123523;
-      --blue: #35c98d;
-      --blue-light: #b7f2d5;
-      --blue-deep: #0d8158;
-      --blue-dim: rgba(53, 201, 141, 0.14);
-      --border: rgba(134, 239, 172, 0.22);
-      --text-main: #effcf4;
-      --text-muted: #a4cbb2;
-      --btn-dark-text: #062719;
-      --badge-bg: linear-gradient(145deg, #143b28, #0a2116);
-      --input-bg: #091f15;
-      --body-grad-top: #16482f;
-      --danger: #f87171;
-      --success: #4ade80;
+      color-scheme: light;
+      --page-bg: #F7F6F2;
+      --surface: #FFFFFF;
+      --surface-soft: #F7F6F2;
+      --border: #E5E2DC;
+      --text-main: #181816;
+      --text-muted: #786B59;
+      --accent: #181816;
+      --accent-text: #FFFFFF;
+      --metallic: linear-gradient(155deg, #EFECE6 0%, #DDD6CA 52%, #F7F5F0 100%);
+      --shadow: 0 10px 30px rgba(24, 24, 22, 0.05);
+      --danger: #A33D32;
+      --success: #3D6B4E;
     }
 
-    body.light-mode {
-      --bg-dark: #edf6ef;
-      --bg-surface: #e0eee3;
-      --bg-card: #ffffff;
-      --blue: #188154;
-      --blue-light: #176844;
-      --blue-deep: #0d6842;
-      --blue-dim: rgba(24, 129, 84, 0.11);
-      --border: rgba(24, 129, 84, 0.2);
-      --text-main: #173a28;
-      --text-muted: #557362;
-      --btn-dark-text: #ffffff;
-      --badge-bg: linear-gradient(145deg, #ffffff, #e5f3e8);
-      --input-bg: #f5faf6;
-      --body-grad-top: #cce8d3;
+    body:not(.light-mode) {
+      color-scheme: dark;
+      --page-bg: #181816;
+      --surface: #242320;
+      --surface-soft: #302E2A;
+      --border: #49453F;
+      --text-main: #F7F5F0;
+      --text-muted: #C0B6A8;
+      --accent: #F7F5F0;
+      --accent-text: #181816;
+      --metallic: linear-gradient(155deg, #3B3832 0%, #292722 52%, #35322C 100%);
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
 
     body {
-      background: radial-gradient(circle at top, var(--body-grad-top) 0%, var(--bg-dark) 65%);
+      background: var(--page-bg);
       color: var(--text-main);
       min-height: 100vh;
       display: flex;
       justify-content: center;
-      padding: 20px 16px 64px;
+      padding: 24px 16px 56px;
       transition: background 0.25s ease, color 0.25s ease;
     }
 
     .app {
       width: 100%;
-      max-width: 440px;
+      max-width: 460px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
     }
 
     .top-bar {
@@ -67,196 +66,230 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 14px;
+      padding: 0 2px;
     }
 
     .brand-pill {
-      background: var(--badge-bg);
-      border: 1.5px solid var(--blue);
-      border-radius: 14px;
-      padding: 8px 10px;
-      box-shadow: 0 8px 20px rgba(19, 105, 65, 0.14);
+      padding: 2px 0;
     }
 
     .brand-pill strong {
       display: block;
-      font-size: 13px;
-      letter-spacing: 0.4px;
+      font-size: 17px;
+      line-height: 1.2;
+      letter-spacing: -0.3px;
       text-transform: none;
-      color: var(--blue-light);
+      color: var(--text-main);
     }
 
     .brand-pill span {
       display: block;
       font-size: 10px;
-      letter-spacing: 1.2px;
+      font-weight: 750;
+      letter-spacing: 1.7px;
       text-transform: uppercase;
       color: var(--text-muted);
-      margin-top: 2px;
+      margin-top: 5px;
     }
 
     .theme-switch {
       display: inline-flex;
-      background: var(--bg-surface);
+      flex: 0 0 auto;
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 13px;
       padding: 3px;
       gap: 3px;
+      box-shadow: 0 3px 12px rgba(24, 24, 22, 0.04);
     }
 
     .theme-btn {
       border: none;
       background: transparent;
       color: var(--text-muted);
-      padding: 6px 12px;
-      border-radius: 9px;
+      padding: 7px 12px;
+      border-radius: 10px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease;
     }
 
     .theme-btn.active {
-      background: var(--blue);
-      color: var(--btn-dark-text);
+      background: var(--accent);
+      color: var(--accent-text);
     }
 
     .card {
       width: 100%;
-      background: var(--bg-card);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 20px;
-      box-shadow: 0 14px 32px rgba(19, 105, 65, 0.12);
+      border-radius: 24px;
+      padding: 12px;
+      box-shadow: var(--shadow);
     }
 
-    .mascot-wrap {
+    .loyalty-card-top {
+      background: var(--metallic);
+      border: 1px solid #D8D1C5;
+      border-radius: 17px;
+      padding: 19px 16px 17px;
+      margin-bottom: 17px;
+    }
+
+    body:not(.light-mode) .loyalty-card-top {
+      border-color: var(--border);
+    }
+
+    .merchant-heading {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      text-align: center;
-      margin-bottom: 14px;
-    }
-
-    .mascot-img {
-      width: 84px;
-      height: 84px;
-      object-fit: contain;
-      border-radius: 20px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      padding: 8px;
-      margin-bottom: 8px;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 19px;
     }
 
     .rest-name {
-      font-size: 20px;
+      min-width: 0;
+      font-size: 18px;
       font-weight: 800;
       color: var(--text-main);
+      line-height: 1.25;
+      letter-spacing: -0.35px;
     }
 
     .reward-banner {
-      margin-top: 8px;
-      display: inline-block;
-      background: var(--blue-dim);
-      color: var(--blue-light);
-      border: 1px solid var(--border);
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      min-height: 27px;
+      background: #181816;
+      color: #FFFFFF;
+      border: 1px solid #181816;
       border-radius: 999px;
-      padding: 5px 14px;
-      font-size: 12px;
+      padding: 5px 10px;
+      font-size: 9px;
       font-weight: 800;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.85px;
+      text-transform: uppercase;
     }
 
     .stamps-grid {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 10px;
-      margin: 16px 0 10px;
+      gap: 11px;
+      margin: 0 0 11px;
     }
 
     .stamp-slot {
-      width: 46px;
-      height: 46px;
+      width: 45px;
+      height: 45px;
       border-radius: 50%;
-      border: 2px dashed var(--border);
-      background: var(--input-bg);
+      border: 1.5px solid var(--border);
+      background: rgba(255, 255, 255, 0.62);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 14px;
       font-weight: 800;
       color: var(--text-muted);
-      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+      transition: transform 0.2s ease, background 0.2s ease;
     }
 
     .stamp-slot.filled {
       border-style: solid;
-      border-color: var(--blue);
-      background: linear-gradient(135deg, var(--blue), var(--blue-deep));
+      border-color: #181816;
+      background: #181816;
       color: #ffffff;
       transform: scale(1.04);
     }
 
+    body:not(.light-mode) .stamp-slot {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    body:not(.light-mode) .stamp-slot.filled {
+      background: #F7F5F0;
+      color: #181816;
+      border-color: #F7F5F0;
+    }
+
     .progress-text {
       text-align: center;
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-muted);
-      font-weight: 600;
-      margin-bottom: 14px;
+      font-weight: 650;
+      margin-bottom: 0;
     }
 
     .stats-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 16px;
+      gap: 9px;
+      margin-bottom: 15px;
     }
 
     .stat-box {
-      background: var(--input-bg);
+      min-width: 0;
+      background: var(--surface-soft);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 10px 12px;
-      text-align: center;
+      border-radius: 15px;
+      padding: 13px 10px;
+      text-align: left;
     }
 
     .stat-box small {
       display: block;
-      font-size: 11px;
+      font-size: 10px;
+      font-weight: 650;
       color: var(--text-muted);
-      margin-bottom: 3px;
+      margin-bottom: 5px;
     }
 
     .stat-box strong {
-      font-size: 15px;
+      font-size: clamp(13px, 3.8vw, 16px);
       font-weight: 800;
-      color: var(--blue-light);
+      color: var(--text-main);
+      letter-spacing: -0.2px;
+      white-space: nowrap;
     }
 
     .actions {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 9px;
     }
 
     .btn-primary {
       width: 100%;
-      background: linear-gradient(135deg, var(--blue), var(--blue-deep));
+      background: #181816;
       color: #ffffff;
       border: none;
       border-radius: 13px;
-      padding: 13px 16px;
+      padding: 14px 16px;
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
-      box-shadow: 0 6px 18px rgba(19, 105, 65, 0.24);
+      box-shadow: 0 6px 16px rgba(24, 24, 22, 0.14);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+    }
+
+    body:not(.light-mode) .btn-primary {
+      background: #F7F5F0;
+      color: #181816;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 9px 20px rgba(24, 24, 22, 0.18);
     }
 
     .btn-secondary {
       width: 100%;
-      background: var(--bg-surface);
-      color: var(--blue-light);
+      background: var(--surface);
+      color: var(--text-main);
       border: 1px solid var(--border);
       border-radius: 13px;
       padding: 11px 14px;
@@ -270,9 +303,9 @@
       background: transparent;
       color: var(--text-muted);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 9px 12px;
-      font-size: 12px;
+      border-radius: 13px;
+      padding: 11px 12px;
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
     }
@@ -284,7 +317,7 @@
       display: grid;
       place-items: center;
       padding: 20px;
-      background: rgba(3, 18, 11, 0.66);
+      background: rgba(24, 24, 22, 0.58);
       backdrop-filter: blur(6px);
     }
 
@@ -292,11 +325,11 @@
       width: min(100%, 420px);
       max-height: calc(100vh - 40px);
       overflow-y: auto;
-      background: var(--bg-card);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 18px;
-      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
       animation: modal-enter 0.18s ease-out;
     }
 
@@ -312,7 +345,7 @@
     .modal-title {
       font-size: 15px;
       font-weight: 800;
-      color: var(--blue-light);
+      color: var(--text-main);
       margin-bottom: 10px;
     }
 
@@ -331,16 +364,16 @@
     .input {
       width: 100%;
       padding: 11px 12px;
-      border: 1.5px solid var(--border);
+      border: 1px solid var(--border);
       border-radius: 12px;
-      background: var(--input-bg);
+      background: var(--surface-soft);
       color: var(--text-main);
       font-size: 14px;
       outline: none;
     }
 
     .input:focus {
-      border-color: var(--blue);
+      border-color: var(--text-muted);
     }
 
     .msg {
@@ -355,24 +388,25 @@
 
     .about-card {
       width: 100%;
-      background: var(--bg-card);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 18px;
+      border-radius: 22px;
+      padding: 19px;
+      box-shadow: var(--shadow);
     }
 
     .about-title {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 800;
-      color: var(--blue-light);
-      margin-bottom: 8px;
+      color: var(--text-main);
+      margin-bottom: 9px;
     }
 
     .about-desc {
       font-size: 13px;
       color: var(--text-muted);
       line-height: 1.5;
-      margin-bottom: 10px;
+      margin-bottom: 13px;
     }
 
     .about-meta {
@@ -380,12 +414,16 @@
       color: var(--text-main);
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 8px;
+    }
+
+    .about-meta div {
+      overflow-wrap: anywhere;
     }
 
     .admin-footer-wrap {
       width: 100%;
-      margin-top: 4px;
+      margin-top: 0;
       display: flex;
       justify-content: center;
     }
@@ -394,21 +432,41 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 10px 18px;
+      padding: 10px 16px;
       border-radius: 12px;
       border: 1px solid var(--border);
-      background: var(--bg-card);
-      color: var(--blue-light);
+      background: transparent;
+      color: var(--text-muted);
       font-size: 12.5px;
       font-weight: 700;
       text-decoration: none;
-      box-shadow: 0 6px 16px rgba(19, 105, 65, 0.1);
+      box-shadow: none;
       transition: border-color 0.2s ease, transform 0.15s ease;
     }
 
     .admin-panel-btn:hover {
-      border-color: var(--blue);
+      border-color: var(--text-muted);
       transform: translateY(-1px);
+    }
+
+    .admin-panel-btn::after {
+      content: " ↗";
+      margin-left: 3px;
+    }
+
+    .msg:empty {
+      display: none;
+    }
+
+    @media (max-width: 360px) {
+      body { padding: 18px 12px 40px; }
+      .card { padding: 10px; }
+      .loyalty-card-top { padding: 17px 12px 15px; }
+      .merchant-heading { align-items: flex-start; }
+      .rest-name { font-size: 16px; }
+      .stamps-grid { gap: 8px; }
+      .stamp-slot { width: 42px; height: 42px; }
+      .stat-box { padding: 11px 8px; }
     }
 
     .hidden { display: none !important; }
@@ -419,7 +477,7 @@
     <div class="top-bar">
       <div class="brand-pill">
         <strong>Yenə gəl</strong>
-        <span>Sadiqlik Kartı</span>
+        <span>SADİQLİK KARTI</span>
       </div>
 
       <div class="theme-switch" role="group" aria-label="Tema seçimi">
@@ -429,14 +487,14 @@
     </div>
 
     <div class="card">
-      <div class="mascot-wrap">
-        <img src="/mascot.png" alt="Yenə gəl maskot" class="mascot-img" onerror="this.style.display='none'" />
-        <div id="restName" class="rest-name">Yüklənir...</div>
-        <div id="rewardBanner" class="reward-banner">BONUS</div>
+      <div class="loyalty-card-top">
+        <div class="merchant-heading">
+          <div id="restName" class="rest-name">Yüklənir...</div>
+          <div id="rewardBanner" class="reward-banner">VIP BONUS</div>
+        </div>
+        <div id="stampsGrid" class="stamps-grid"></div>
+        <div id="progressText" class="progress-text">0 / 5 çəntik</div>
       </div>
-
-      <div id="stampsGrid" class="stamps-grid"></div>
-      <div id="progressText" class="progress-text">0 / 5 çəntik</div>
 
       <div class="stats-row">
         <div class="stat-box">
@@ -478,7 +536,7 @@
     </div>
 
     <div id="aboutBox" class="about-card">
-      <div class="about-title">Restoran haqqında</div>
+      <div class="about-title">Məkan haqqında</div>
       <div id="aboutText" class="about-desc"></div>
       <div id="aboutMeta" class="about-meta"></div>
     </div>
@@ -566,7 +624,7 @@
         const c = stateCard || { stamps_count: 0, reward_unlocked: false, total_spent: 0, bonus_balance: 0 };
 
         restNameEl.textContent = r.name || slug;
-        rewardBannerEl.textContent = r.reward_text || 'BONUS';
+        rewardBannerEl.textContent = r.reward_text || 'VIP BONUS';
 
         const goal = Math.max(1, Number(r.stamp_goal || 5));
         const stamps = Math.max(0, Number(c.stamps_count || 0));
