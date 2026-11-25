@@ -69,7 +69,7 @@ exports.handler = async (event) => {
     const bonusMode = String(body.bonus_mode || '').trim().toLowerCase();
 
     if (!Number.isInteger(stampGoal) || stampGoal < 1 || stampGoal > 20) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Çəntik sayı 1-20 arası tam ədəd olmalıdır.' }) };
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Möhür sayı 1-20 arası tam ədəd olmalıdır.' }) };
     }
 
     if (bonusMode !== 'fixed' && bonusMode !== 'percent') {

@@ -493,7 +493,7 @@
           <div id="rewardBanner" class="reward-banner">BONUS</div>
         </div>
         <div id="stampsGrid" class="stamps-grid"></div>
-        <div id="progressText" class="progress-text">0 / 5 çəntik</div>
+        <div id="progressText" class="progress-text">0 / 5 möhür</div>
       </div>
 
       <div class="stats-row">
@@ -508,9 +508,9 @@
       </div>
 
       <div class="actions">
-        <button id="openStampBtn" type="button" class="btn-primary">Çəntik əlavə et (Kassir)</button>
+        <button id="openStampBtn" type="button" class="btn-primary">Möhür əlavə et (Kassir)</button>
         <button id="redeemBtn" type="button" class="btn-secondary hidden">Bonusu istifadə et</button>
-        <button id="undoBtn" type="button" class="btn-danger-ghost">Son çəntiyi geri al</button>
+        <button id="undoBtn" type="button" class="btn-danger-ghost">Son möhürü geri al</button>
       </div>
 
       <div id="mainMsg" class="msg"></div>
@@ -657,7 +657,7 @@
           stampsGridEl.appendChild(slot);
         }
 
-        progressTextEl.textContent = `${Math.min(stamps, goal)} / ${goal} çəntik`;
+        progressTextEl.textContent = `${Math.min(stamps, goal)} / ${goal} möhür`;
         totalSpentTextEl.textContent = `${Number(c.total_spent || 0).toFixed(2)} AZN`;
         bonusBalanceTextEl.textContent = `${Number(c.bonus_balance || 0).toFixed(2)} AZN`;
 
@@ -703,9 +703,9 @@
         billAmountInput.value = '';
         amountFieldWrap.classList.toggle('hidden', action !== 'stamp');
 
-        if (action === 'stamp') cashierTitle.textContent = 'Çəntik Əlavə Et (Kassir)';
+        if (action === 'stamp') cashierTitle.textContent = 'Möhür Əlavə Et (Kassir)';
         else if (action === 'redeem') cashierTitle.textContent = 'Bonusu İstifadə Et (Kassir)';
-        else cashierTitle.textContent = 'Son Çəntiyi Geri Al (Kassir)';
+        else cashierTitle.textContent = 'Son Möhürü Geri Al (Kassir)';
 
         cashierPanel.classList.remove('hidden');
         document.body.classList.add('modal-open');

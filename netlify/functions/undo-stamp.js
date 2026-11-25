@@ -132,7 +132,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 422,
         headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Geri alınacaq son çəntik əməliyyatı tapılmadı.' })
+        body: JSON.stringify({ error: 'Geri alınacaq son möhür əməliyyatı tapılmadı.' })
       };
     }
 
@@ -141,7 +141,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 422,
         headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Son çəntiyin hesab məbləği etibarsızdır.' })
+        body: JSON.stringify({ error: 'Son möhürün hesab məbləği etibarsızdır.' })
       };
     }
 

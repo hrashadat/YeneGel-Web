@@ -328,7 +328,7 @@
 
     <div id="loginCard" class="card">
       <div class="card-title">Restoran Panelinə Giriş</div>
-      <div class="card-sub">Sizə verilmiş xüsusi restoran kodunu daxil edib çəntik sayını, kassir PİN-ini və bonus ayarlarını idarə edin.</div>
+      <div class="card-sub">Sizə verilmiş xüsusi restoran kodunu daxil edib möhür sayını, kassir PİN-ini və bonus ayarlarını idarə edin.</div>
 
       <div class="field">
         <label for="slugInput">Restoran kodu (slug)</label>
@@ -355,7 +355,7 @@
 
       <div class="grid-2">
         <div class="field">
-          <label for="stampGoalInput">Çəntik sayı (hədəf)</label>
+          <label for="stampGoalInput">Möhür sayı (hədəf)</label>
           <input id="stampGoalInput" class="input" type="text" inputmode="numeric" pattern="[0-9]{1,2}" maxlength="2" autocomplete="off" />
         </div>
 
@@ -469,6 +469,14 @@
       }
 
       let currentSession = { slug: '', accessCode: '' };
+      let saveRedirectTimer = null;
+
+      function clearSaveRedirectTimer() {
+        if (saveRedirectTimer !== null) {
+          window.clearTimeout(saveRedirectTimer);
+          saveRedirectTimer = null;
+        }
+      }
 
       function syncBonusLabel() {
         const isPercent = bonusModeSelect.value === 'percent';
@@ -553,6 +561,7 @@
       }
 
       async function handleSave() {
+        clearSaveRedirectTimer();
         saveMsg.textContent = '';
         saveMsg.className = 'status-msg';
 
@@ -563,7 +572,7 @@
         const bonusNum = Number(bonusInputValue);
 
         if (!Number.isInteger(stampGoal) || stampGoal < 1 || stampGoal > 20) {
-          saveMsg.textContent = 'Çəntik sayı 1 ilə 20 arasında tam ədəd olmalıdır.';
+          saveMsg.textContent = 'Möhür sayı 1 ilə 20 arasında tam ədəd olmalıdır.';
           saveMsg.classList.add('err');
           return;
         }
@@ -580,6 +589,7 @@
           return;
         }
 
+        const saveSession = currentSession;
         saveBtn.disabled = true;
         try {
           const payload = {
@@ -611,9 +621,16 @@
             return;
           }
 
+          if (currentSession !== saveSession) return;
+
           if (data.restaurant) fillForm(data.restaurant);
-          saveMsg.textContent = 'Ayarlar uğurla yeniləndi!';
+          saveMsg.textContent = 'Dəyişikliklər yadda saxlanıldı! Ana səhifəyə yönləndirilir...';
           saveMsg.classList.add('ok');
+          const redirectSlug = currentSession.slug || slugInput.value.trim().toLowerCase() || 'kaya';
+          saveRedirectTimer = window.setTimeout(() => {
+            saveRedirectTimer = null;
+            window.location.href = `index.html?slug=${encodeURIComponent(redirectSlug)}`;
+          }, 1100);
         } catch {
           saveMsg.textContent = 'Şəbəkə xətası baş verdi.';
           saveMsg.classList.add('err');
@@ -623,6 +640,8 @@
       }
 
       logoutBtn.addEventListener('click', () => {
+        clearSaveRedirectTimer();
+        saveBtn.disabled = false;
         currentSession = { slug: '', accessCode: '' };
         accessCodeInput.value = '';
         saveMsg.textContent = '';
