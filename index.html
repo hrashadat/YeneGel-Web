@@ -624,7 +624,7 @@
         const c = stateCard || { stamps_count: 0, reward_unlocked: false, total_spent: 0, bonus_balance: 0 };
 
         restNameEl.textContent = r.name || slug;
-        rewardBannerEl.textContent = r.reward_text || 'BONUS';
+        rewardBannerEl.textContent = (r.reward_text || 'BONUS').replace(/\bVIP\s+/gi, '');
 
         const goal = Math.max(1, Number(r.stamp_goal || 5));
         const stamps = Math.max(0, Number(c.stamps_count || 0));
