@@ -34,10 +34,19 @@ function calculateBonusAmount(restaurant, totalSpent) {
   return Math.max(0, roundMoney(amount));
 }
 
-function getBonusBalance(restaurant, stampsCount, totalSpent) {
-  const unlocked = stampsCount >= getStampGoal(restaurant);
-  const hasAccruedBonus = String(restaurant?.bonus_mode || 'fixed').trim().toLowerCase() === 'percent';
-  return unlocked || hasAccruedBonus ? calculateBonusAmount(restaurant, totalSpent) : 0;
+function getStoredBonusBalance(card) {
+  const balance = Number(card?.bonus_balance);
+  return Number.isFinite(balance) ? Math.max(0, roundMoney(balance)) : 0;
+}
+
+function getBonusBalance(restaurant, card) {
+  const unlocked = getStampCount(card) >= getStampGoal(restaurant);
+  const wasUnlocked = card?.reward_unlocked === true;
+  const mode = String(restaurant?.bonus_mode || 'fixed').trim().toLowerCase();
+  const pendingFixedBonus = unlocked && !wasUnlocked && mode !== 'percent'
+    ? calculateBonusAmount(restaurant, 0)
+    : 0;
+  return roundMoney(getStoredBonusBalance(card) + pendingFixedBonus);
 }
 
 function normalizeCard(restaurant, card) {
@@ -48,13 +57,14 @@ function normalizeCard(restaurant, card) {
     stamps_count: stampsCount,
     reward_unlocked: stampsCount >= getStampGoal(restaurant),
     total_spent: totalSpent,
-    bonus_balance: getBonusBalance(restaurant, stampsCount, totalSpent)
+    bonus_balance: getBonusBalance(restaurant, card)
   };
 }
 
 module.exports = {
   calculateBonusAmount,
   getBonusBalance,
+  getStoredBonusBalance,
   getStampCount,
   getStampGoal,
   getTotalSpent,

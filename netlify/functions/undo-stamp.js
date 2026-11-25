@@ -1,5 +1,5 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const { getBonusBalance, getStampCount, getStampGoal, getTotalSpent, normalizeCard, roundMoney } = require('../lib/loyalty');
+const { getBonusBalance, getStampCount, getStampGoal, getStoredBonusBalance, getTotalSpent, normalizeCard, roundMoney } = require('../lib/loyalty');
 const { parseJsonObject } = require('../lib/request');
 
 function getSupabaseConfig() {
@@ -125,7 +125,7 @@ exports.handler = async (event) => {
     const lastTxs = await sbFetch(
       url,
       key,
-      `card_transactions?card_id=eq.${encodeURIComponent(card.id)}&tx_type=eq.stamp&order=created_at.desc&limit=1&select=id,bill_amount`
+      `card_transactions?card_id=eq.${encodeURIComponent(card.id)}&tx_type=eq.stamp&order=created_at.desc&limit=1&select=id,bill_amount,bonus_delta,stamp_delta`
     );
     const lastTx = lastTxs?.[0] || null;
     if (!lastTx?.id) {
@@ -145,11 +145,39 @@ exports.handler = async (event) => {
       };
     }
 
+    const bonusDelta = Number(lastTx.bonus_delta);
+    const stampDelta = Number(lastTx.stamp_delta);
+    if (!Number.isFinite(bonusDelta) || bonusDelta < 0 || ![0, 1].includes(stampDelta)) {
+      return {
+        statusCode: 422,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Son əməliyyatın bonus və möhür məlumatı etibarsızdır.' })
+      };
+    }
+
     const goal = getStampGoal(restaurant);
-    const nextStamps = Math.max(0, getStampCount(card) - 1);
-    const nextTotalSpent = nextStamps === 0 ? 0 : Math.max(0, roundMoney(getTotalSpent(card) - deductedAmount));
+    const currentStamps = getStampCount(card);
+    if (stampDelta > currentStamps) {
+      return {
+        statusCode: 422,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Son əməliyyatın möhür sayı kartla uyğun gəlmir.' })
+      };
+    }
+    const pendingFixedBonus = Math.max(0, roundMoney(card.bonus_balance - getStoredBonusBalance(existingCard)));
+    const nextStamps = currentStamps - stampDelta;
+    const nextTotalSpent = Math.max(0, roundMoney(getTotalSpent(card) - deductedAmount));
     const unlocked = nextStamps >= goal;
-    const nextBonusBalance = getBonusBalance(restaurant, nextStamps, nextTotalSpent);
+    let nextBonusBalance = Math.max(0, roundMoney(getBonusBalance(restaurant, card) - bonusDelta));
+    if (!unlocked && pendingFixedBonus > 0) {
+      nextBonusBalance = Math.max(0, roundMoney(nextBonusBalance - pendingFixedBonus));
+    }
+    const preservePendingUnlock = unlocked
+      && pendingFixedBonus > 0
+      && existingCard.reward_unlocked !== true;
+    const storedBonusBalance = preservePendingUnlock
+      ? Math.max(0, roundMoney(nextBonusBalance - pendingFixedBonus))
+      : nextBonusBalance;
 
     const updated = await sbFetch(
       url,
@@ -160,9 +188,9 @@ exports.handler = async (event) => {
         headers: { Prefer: 'return=representation' },
         body: JSON.stringify({
           stamps_count: nextStamps,
-          reward_unlocked: unlocked,
+          reward_unlocked: preservePendingUnlock ? false : unlocked,
           total_spent: nextTotalSpent,
-          bonus_balance: nextBonusBalance
+          bonus_balance: storedBonusBalance
         })
       }
     );

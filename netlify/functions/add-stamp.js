@@ -1,5 +1,5 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const { getBonusBalance, getStampCount, getStampGoal, getTotalSpent, normalizeCard, roundMoney } = require('../lib/loyalty');
+const { calculateBonusAmount, getBonusBalance, getStampCount, getStampGoal, getStoredBonusBalance, getTotalSpent, normalizeCard, roundMoney } = require('../lib/loyalty');
 const { parseJsonObject } = require('../lib/request');
 
 function getSupabaseConfig() {
@@ -135,7 +135,10 @@ exports.handler = async (event) => {
     let currentCard = existingCard ? normalizeCard(restaurant, existingCard) : null;
     const currentStamps = getStampCount(currentCard);
     const prevSpent = getTotalSpent(currentCard);
-    const prevBonusBalance = getBonusBalance(restaurant, currentStamps, prevSpent);
+    const prevBonusBalance = currentCard ? getBonusBalance(restaurant, currentCard) : 0;
+    const pendingFixedBonus = currentCard
+      ? Math.max(0, roundMoney(currentCard.bonus_balance - getStoredBonusBalance(existingCard)))
+      : 0;
     const nextTotalSpent = roundMoney(prevSpent + billAmount);
     if (!Number.isFinite(nextTotalSpent)) {
       return {
@@ -145,14 +148,33 @@ exports.handler = async (event) => {
       };
     }
 
-    const nextStamps = currentStamps >= goal ? currentStamps : currentStamps + 1;
+    const stampDelta = currentStamps >= goal ? 0 : 1;
+    const nextStamps = currentStamps + stampDelta;
     const unlocked = nextStamps >= goal;
-    const nextBonusBalance = getBonusBalance(restaurant, nextStamps, nextTotalSpent);
+    const mode = String(restaurant.bonus_mode || 'fixed').trim().toLowerCase();
+    const purchaseBonus = mode === 'percent' ? calculateBonusAmount(restaurant, billAmount) : 0;
+    const completionBonus = mode !== 'percent' && stampDelta === 1 && unlocked
+      ? calculateBonusAmount(restaurant, 0)
+      : 0;
+    const bonusDelta = roundMoney(purchaseBonus + completionBonus);
+    const nextBonusBalance = roundMoney(prevBonusBalance + bonusDelta);
+    const preservePendingUnlock = stampDelta === 0
+      && pendingFixedBonus > 0
+      && existingCard?.reward_unlocked !== true;
+    if (!Number.isFinite(nextBonusBalance)) {
+      return {
+        statusCode: 400,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Bonus məbləği çox böyükdür.' })
+      };
+    }
     const nextCardValues = {
       stamps_count: nextStamps,
-      reward_unlocked: unlocked,
+      reward_unlocked: preservePendingUnlock ? false : unlocked,
       total_spent: nextTotalSpent,
-      bonus_balance: nextBonusBalance,
+      bonus_balance: preservePendingUnlock
+        ? roundMoney(nextBonusBalance - pendingFixedBonus)
+        : nextBonusBalance,
       last_stamped_at: new Date().toISOString()
     };
 
@@ -198,7 +220,8 @@ exports.handler = async (event) => {
         visitor_token: visitorToken,
         tx_type: 'stamp',
         bill_amount: billAmount,
-        bonus_delta: currentCard.bonus_balance - prevBonusBalance
+        bonus_delta: bonusDelta,
+        stamp_delta: stampDelta
       })
     });
 
