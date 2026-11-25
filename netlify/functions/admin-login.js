@@ -1,95 +1,110 @@
-const { createClient } = require('@supabase/supabase-js');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-const headers = {
+const JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
+
+function getSupabaseConfig() {
+  const rawUrl = (process.env.SUPABASE_URL || '').trim();
+  const markdownMatch = rawUrl.match(/\((https?:\/\/[^)]+)\)/);
+  const url = (markdownMatch ? markdownMatch[1] : rawUrl)
+    .replace(/^\[|\]$/g, '')
+    .replace(/\/+$/, '');
+  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+
+  if (!url || !key) {
+    throw new Error('SUPABASE_URL və ya SUPABASE_SERVICE_ROLE_KEY təyin edilməyib.');
+  }
+  return { url, key };
+}
+
+async function sbFetch(url, key, path) {
+  const res = await fetch(`${url}/rest/v1/${path}`, {
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const text = await res.text();
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text };
+    }
+  }
+
+  if (!res.ok) {
+    throw new Error((data && (data.message || data.error)) || `Supabase xətası (${res.status})`);
+  }
+  return data;
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+    return { statusCode: 200, headers: JSON_HEADERS, body: '' };
   }
 
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Yalnız POST sorğularına icazə verilir.' }),
-    };
-  }
-
-  if (!supabaseUrl || !supabaseKey) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: 'Serverdə SUPABASE_URL və ya Supabase açarı təyin edilməyib.',
-      }),
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ error: 'Yalnız POST sorğularına icazə verilir.' })
     };
   }
 
   try {
     const body = JSON.parse(event.body || '{}');
     const slug = String(body.slug || '').trim().toLowerCase();
-    const adminCode = String(body.adminCode || body.admin_code || '').trim();
+    const accessCode = String(body.accessCode || body.adminCode || body.admin_code || '').trim();
 
-    if (!slug || !adminCode) {
+    if (!slug || !accessCode) {
       return {
         statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'Restoran kodu (slug) və giriş kodu tələb olunur.' }),
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Restoran kodu və xüsusi giriş kodu tələb olunur.' })
       };
     }
 
-    const { data: restaurant, error } = await supabase
-      .from('restaurants')
-      .select(
-        'id, slug, name, admin_code, pin_code, stamp_goal, bonus_mode, bonus_fixed_amount, bonus_percent, reward_text, about, address, phone, instagram'
-      )
-      .eq('slug', slug)
-      .maybeSingle();
+    const { url, key } = getSupabaseConfig();
+    const rows = await sbFetch(
+      url,
+      key,
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,slug,name,pin_code,admin_code,stamp_goal,reward_text,about,address,phone,instagram,bonus_mode,bonus_fixed_amount,bonus_percent`
+    );
 
-    if (error) {
+    const restaurant = rows?.[0];
+    if (!restaurant) {
       return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: 'Baza sorğusunda xəta: ' + error.message }),
+        statusCode: 404,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Restoran tapılmadı.' })
       };
     }
 
-    if (!restaurant || String(restaurant.admin_code || '').trim() !== adminCode) {
+    if (!restaurant.admin_code || String(restaurant.admin_code).trim() !== accessCode) {
       return {
         statusCode: 401,
-        headers,
-        body: JSON.stringify({ error: 'Kod və ya restoran adı yanlışdır.' }),
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Xüsusi giriş kodu yanlışdır.' })
       };
     }
 
     const { admin_code, ...safeRestaurant } = restaurant;
-
     return {
       statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        ok: true,
-        restaurant: safeRestaurant,
-      }),
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ ok: true, restaurant: safeRestaurant })
     };
   } catch (err) {
     return {
       statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Daxili server xətası: ' + err.message }),
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ error: 'Server xətası: ' + err.message })
     };
   }
 };
