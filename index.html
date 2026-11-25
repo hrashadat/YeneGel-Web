@@ -3,42 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>YeneGel — Rəqəmsal Sadiqlik Kartı</title>
+  <title>Yenə gəl — Rəqəmsal Sadiqlik Kartı</title>
   <style>
     :root {
-      --bg-dark: #061324;
-      --bg-surface: #0b1f38;
-      --bg-card: #0f2948;
-      --blue: #38bdf8;
-      --blue-light: #bae6fd;
-      --blue-deep: #0284c7;
-      --blue-dim: rgba(56, 189, 248, 0.14);
-      --border: rgba(125, 211, 252, 0.24);
-      --text-main: #f0f9ff;
-      --text-muted: #93c5fd;
-      --btn-dark-text: #041222;
-      --badge-bg: linear-gradient(145deg, #102d50, #07192e);
-      --input-bg: #07192e;
-      --body-grad-top: #0c2a4d;
+      --bg-dark: #071a12;
+      --bg-surface: #0d261a;
+      --bg-card: #123523;
+      --blue: #35c98d;
+      --blue-light: #b7f2d5;
+      --blue-deep: #0d8158;
+      --blue-dim: rgba(53, 201, 141, 0.14);
+      --border: rgba(134, 239, 172, 0.22);
+      --text-main: #effcf4;
+      --text-muted: #a4cbb2;
+      --btn-dark-text: #062719;
+      --badge-bg: linear-gradient(145deg, #143b28, #0a2116);
+      --input-bg: #091f15;
+      --body-grad-top: #16482f;
       --danger: #f87171;
       --success: #4ade80;
     }
 
     body.light-mode {
-      --bg-dark: #eff8ff;
-      --bg-surface: #e0f2fe;
+      --bg-dark: #edf6ef;
+      --bg-surface: #e0eee3;
       --bg-card: #ffffff;
-      --blue: #0284c7;
-      --blue-light: #0369a1;
-      --blue-deep: #0369a1;
-      --blue-dim: rgba(14, 165, 233, 0.12);
-      --border: rgba(2, 132, 199, 0.22);
-      --text-main: #082f49;
-      --text-muted: #3b6e8c;
+      --blue: #188154;
+      --blue-light: #176844;
+      --blue-deep: #0d6842;
+      --blue-dim: rgba(24, 129, 84, 0.11);
+      --border: rgba(24, 129, 84, 0.2);
+      --text-main: #173a28;
+      --text-muted: #557362;
       --btn-dark-text: #ffffff;
-      --badge-bg: linear-gradient(145deg, #ffffff, #e0f2fe);
-      --input-bg: #f0f9ff;
-      --body-grad-top: #bae6fd;
+      --badge-bg: linear-gradient(145deg, #ffffff, #e5f3e8);
+      --input-bg: #f5faf6;
+      --body-grad-top: #cce8d3;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -75,14 +75,14 @@
       border: 1.5px solid var(--blue);
       border-radius: 14px;
       padding: 8px 16px;
-      box-shadow: 0 8px 20px rgba(2, 132, 199, 0.14);
+      box-shadow: 0 8px 20px rgba(19, 105, 65, 0.14);
     }
 
     .brand-pill strong {
       display: block;
       font-size: 13px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      text-transform: none;
       color: var(--blue-light);
     }
 
@@ -126,7 +126,7 @@
       border: 1px solid var(--border);
       border-radius: 22px;
       padding: 20px;
-      box-shadow: 0 14px 32px rgba(2, 132, 199, 0.12);
+      box-shadow: 0 14px 32px rgba(19, 105, 65, 0.12);
     }
 
     .mascot-wrap {
@@ -250,7 +250,7 @@
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
-      box-shadow: 0 6px 18px rgba(2, 132, 199, 0.25);
+      box-shadow: 0 6px 18px rgba(19, 105, 65, 0.24);
     }
 
     .btn-secondary {
@@ -277,13 +277,36 @@
       cursor: pointer;
     }
 
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(3, 18, 11, 0.66);
+      backdrop-filter: blur(6px);
+    }
+
     .modal-box {
-      width: 100%;
+      width: min(100%, 420px);
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 20px;
       padding: 18px;
-      box-shadow: 0 14px 32px rgba(2, 132, 199, 0.12);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+      animation: modal-enter 0.18s ease-out;
+    }
+
+    @keyframes modal-enter {
+      from { opacity: 0; transform: translateY(8px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    body.modal-open {
+      overflow: hidden;
     }
 
     .modal-title {
@@ -379,7 +402,7 @@
       font-size: 12.5px;
       font-weight: 700;
       text-decoration: none;
-      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.1);
+      box-shadow: 0 6px 16px rgba(19, 105, 65, 0.1);
       transition: border-color 0.2s ease, transform 0.15s ease;
     }
 
@@ -395,7 +418,7 @@
   <div class="app">
     <div class="top-bar">
       <div class="brand-pill">
-        <strong>YeneGel</strong>
+        <strong>Yenə gəl</strong>
         <span>Sadiqlik Kartı</span>
       </div>
 
@@ -407,7 +430,7 @@
 
     <div class="card">
       <div class="mascot-wrap">
-        <img src="/mascot.png" alt="YeneGel maskot" class="mascot-img" onerror="this.style.display='none'" />
+        <img src="/mascot.png" alt="Yenə gəl maskot" class="mascot-img" onerror="this.style.display='none'" />
         <div id="restName" class="rest-name">Yüklənir...</div>
         <div id="rewardBanner" class="reward-banner">BONUS</div>
       </div>
@@ -435,21 +458,23 @@
       <div id="mainMsg" class="msg"></div>
     </div>
 
-    <div id="cashierPanel" class="modal-box hidden">
-      <div id="cashierTitle" class="modal-title">Kassir Təsdiqi</div>
-      <div id="amountFieldWrap" class="field">
-        <label for="billAmountInput">Hesab məbləği (AZN)</label>
-        <input id="billAmountInput" class="input" type="number" step="0.01" min="0.01" placeholder="məs: 25.00" />
+    <div id="cashierPanel" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="cashierTitle">
+      <div class="modal-box">
+        <div id="cashierTitle" class="modal-title">Kassir Təsdiqi</div>
+        <div id="amountFieldWrap" class="field">
+          <label for="billAmountInput">Hesab məbləği (AZN)</label>
+          <input id="billAmountInput" class="input" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" autocomplete="off" placeholder="məs: 25,00" />
+        </div>
+        <div class="field">
+          <label for="pinInput">Kassir PİN kodu (4 rəqəm)</label>
+          <input id="pinInput" class="input" type="password" inputmode="numeric" maxlength="4" placeholder="••••" />
+        </div>
+        <div class="actions">
+          <button id="confirmCashierBtn" type="button" class="btn-primary">Təsdiqlə</button>
+          <button id="cancelCashierBtn" type="button" class="btn-danger-ghost">Bağla</button>
+        </div>
+        <div id="cashierMsg" class="msg err"></div>
       </div>
-      <div class="field">
-        <label for="pinInput">Kassir PİN kodu (4 rəqəm)</label>
-        <input id="pinInput" class="input" type="password" inputmode="numeric" maxlength="4" placeholder="••••" />
-      </div>
-      <div class="actions">
-        <button id="confirmCashierBtn" type="button" class="btn-primary">Təsdiqlə</button>
-        <button id="cancelCashierBtn" type="button" class="btn-danger-ghost">Bağla</button>
-      </div>
-      <div id="cashierMsg" class="msg err"></div>
     </div>
 
     <div id="aboutBox" class="about-card">
@@ -523,6 +548,15 @@
       const aboutTextEl = document.getElementById('aboutText');
       const aboutMetaEl = document.getElementById('aboutMeta');
 
+      billAmountInput.addEventListener('input', () => {
+        let value = billAmountInput.value.replace(/,/g, '.').replace(/[^\d.]/g, '');
+        const decimalIndex = value.indexOf('.');
+        if (decimalIndex !== -1) {
+          value = value.slice(0, decimalIndex + 1) + value.slice(decimalIndex + 1).replace(/\./g, '').slice(0, 2);
+        }
+        billAmountInput.value = value;
+      });
+
       let currentAction = 'stamp';
       let stateRestaurant = null;
       let stateCard = null;
@@ -589,11 +623,16 @@
         else cashierTitle.textContent = 'Son Çəntiyi Geri Al (Kassir)';
 
         cashierPanel.classList.remove('hidden');
+        document.body.classList.add('modal-open');
+        (action === 'stamp' ? billAmountInput : pinInput).focus();
       }
 
       function closeCashier() {
         cashierPanel.classList.add('hidden');
+        document.body.classList.remove('modal-open');
         cashierMsgEl.textContent = '';
+        const trigger = currentAction === 'redeem' ? redeemBtn : currentAction === 'undo' ? undoBtn : openStampBtn;
+        trigger.focus();
       }
 
       async function handleCashierConfirm() {
@@ -610,7 +649,7 @@
         const payload = { slug, visitorToken, pin };
 
         if (currentAction === 'stamp') {
-          const amount = Number(billAmountInput.value);
+          const amount = Number(billAmountInput.value.replace(',', '.'));
           if (!Number.isFinite(amount) || amount <= 0) {
             cashierMsgEl.textContent = 'Düzgün hesab məbləği daxil edin.';
             return;
@@ -652,6 +691,14 @@
       undoBtn.addEventListener('click', () => openCashier('undo'));
       cancelCashierBtn.addEventListener('click', closeCashier);
       confirmCashierBtn.addEventListener('click', handleCashierConfirm);
+      cashierPanel.addEventListener('click', event => {
+        if (event.target === cashierPanel) closeCashier();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !cashierPanel.classList.contains('hidden')) {
+          closeCashier();
+        }
+      });
 
       loadCard();
     })();
