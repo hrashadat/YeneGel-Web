@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YeneGel — Rəqəmsal Sadiqlik Kartı</title>
+  <style>
+    :root {
+      --bg-dark: #061324;
+      --bg-surface: #0b1f38;
+      --bg-card: #0f2948;
+      --blue: #38bdf8;
+      --blue-light: #bae6fd;
+      --blue-deep: #0284c7;
+      --blue-dim: rgba(56, 189, 248, 0.14);
+      --border: rgba(125, 211, 252, 0.24);
+      --text-main: #f0f9ff;
+      --text-muted: #93c5fd;
+      --btn-dark-text: #041222;
+      --badge-bg: linear-gradient(145deg, #102d50, #07192e);
+      --input-bg: #07192e;
+      --body-grad-top: #0c2a4d;
+      --danger: #f87171;
+      --success: #4ade80;
+    }
+
+    body.light-mode {
+      --bg-dark: #eff8ff;
+      --bg-surface: #e0f2fe;
+      --bg-card: #ffffff;
+      --blue: #0284c7;
+      --blue-light: #0369a1;
+      --blue-deep: #0369a1;
+      --blue-dim: rgba(14, 165, 233, 0.12);
+      --border: rgba(2, 132, 199, 0.22);
+      --text-main: #082f49;
+      --text-muted: #3b6e8c;
+      --btn-dark-text: #ffffff;
+      --badge-bg: linear-gradient(145deg, #ffffff, #e0f2fe);
+      --input-bg: #f0f9ff;
+      --body-grad-top: #bae6fd;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+    body {
+      background: radial-gradient(circle at top, var(--body-grad-top) 0%, var(--bg-dark) 65%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 20px 16px 64px;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .top-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .brand-pill {
+      background: var(--badge-bg);
+      border: 1.5px solid var(--blue);
+      border-radius: 14px;
+      padding: 8px 16px;
+      box-shadow: 0 8px 20px rgba(2, 132, 199, 0.14);
+    }
+
+    .brand-pill strong {
+      display: block;
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--blue-light);
+    }
+
+    .brand-pill span {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .theme-switch {
+      display: inline-flex;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .theme-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .theme-btn.active {
+      background: var(--blue);
+      color: var(--btn-dark-text);
+    }
+
+    .card {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: 0 14px 32px rgba(2, 132, 199, 0.12);
+    }
+
+    .mascot-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    .mascot-img {
+      width: 84px;
+      height: 84px;
+      object-fit: contain;
+      border-radius: 20px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+
+    .rest-name {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .reward-banner {
+      margin-top: 8px;
+      display: inline-block;
+      background: var(--blue-dim);
+      color: var(--blue-light);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+    }
+
+    .stamps-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 16px 0 10px;
+    }
+
+    .stamp-slot {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: 2px dashed var(--border);
+      background: var(--input-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-muted);
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .stamp-slot.filled {
+      border-style: solid;
+      border-color: var(--blue);
+      background: linear-gradient(135deg, var(--blue), var(--blue-deep));
+      color: #ffffff;
+      transform: scale(1.04);
+    }
+
+    .progress-text {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat-box {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .stat-box small {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+
+    .stat-box strong {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--blue-light);
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--blue), var(--blue-deep));
+      color: #ffffff;
+      border: none;
+      border-radius: 13px;
+      padding: 13px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(2, 132, 199, 0.25);
+    }
+
+    .btn-secondary {
+      width: 100%;
+      background: var(--bg-surface);
+      color: var(--blue-light);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 11px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-danger-ghost {
+      width: 100%;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 9px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .modal-box {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 14px 32px rgba(2, 132, 199, 0.12);
+    }
+
+    .modal-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--blue-light);
+      margin-bottom: 10px;
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .input {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      background: var(--input-bg);
+      color: var(--text-main);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .input:focus {
+      border-color: var(--blue);
+    }
+
+    .msg {
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      min-height: 18px;
+    }
+
+    .msg.err { color: var(--danger); }
+    .msg.ok { color: var(--success); }
+
+    .about-card {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .about-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--blue-light);
+      margin-bottom: 8px;
+    }
+
+    .about-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .about-meta {
+      font-size: 12px;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .admin-footer-wrap {
+      width: 100%;
+      margin-top: 4px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .admin-panel-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--blue-light);
+      font-size: 12.5px;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.1);
+      transition: border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .admin-panel-btn:hover {
+      border-color: var(--blue);
+      transform: translateY(-1px);
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body class="light-mode">
+  <div class="app">
+    <div class="top-bar">
+      <div class="brand-pill">
+        <strong>YeneGel</strong>
+        <span>Sadiqlik Kartı</span>
+      </div>
+
+      <div class="theme-switch" role="group" aria-label="Tema seçimi">
+        <button id="lightThemeBtn" type="button" class="theme-btn active">Light</button>
+        <button id="darkThemeBtn" type="button" class="theme-btn">Dark</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="mascot-wrap">
+        <img src="/mascot.png" alt="YeneGel maskot" class="mascot-img" onerror="this.style.display='none'" />
+        <div id="restName" class="rest-name">Yüklənir...</div>
+        <div id="rewardBanner" class="reward-banner">BONUS</div>
+      </div>
+
+      <div id="stampsGrid" class="stamps-grid"></div>
+      <div id="progressText" class="progress-text">0 / 5 çəntik</div>
+
+      <div class="stats-row">
+        <div class="stat-box">
+          <small>Toplam hesab</small>
+          <strong id="totalSpentText">0.00 AZN</strong>
+        </div>
+        <div class="stat-box">
+          <small>Cari bonus</small>
+          <strong id="bonusBalanceText">0.00 AZN</strong>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="openStampBtn" type="button" class="btn-primary">Çəntik əlavə et (Kassir)</button>
+        <button id="redeemBtn" type="button" class="btn-secondary hidden">Bonusu istifadə et</button>
+        <button id="undoBtn" type="button" class="btn-danger-ghost">Son çəntiyi geri al</button>
+      </div>
+
+      <div id="mainMsg" class="msg"></div>
+    </div>
+
+    <div id="cashierPanel" class="modal-box hidden">
+      <div id="cashierTitle" class="modal-title">Kassir Təsdiqi</div>
+      <div id="amountFieldWrap" class="field">
+        <label for="billAmountInput">Hesab məbləği (AZN)</label>
+        <input id="billAmountInput" class="input" type="number" step="0.01" min="0.01" placeholder="məs: 25.00" />
+      </div>
+      <div class="field">
+        <label for="pinInput">Kassir PİN kodu (4 rəqəm)</label>
+        <input id="pinInput" class="input" type="password" inputmode="numeric" maxlength="4" placeholder="••••" />
+      </div>
+      <div class="actions">
+        <button id="confirmCashierBtn" type="button" class="btn-primary">Təsdiqlə</button>
+        <button id="cancelCashierBtn" type="button" class="btn-danger-ghost">Bağla</button>
+      </div>
+      <div id="cashierMsg" class="msg err"></div>
+    </div>
+
+    <div id="aboutBox" class="about-card">
+      <div class="about-title">Restoran haqqında</div>
+      <div id="aboutText" class="about-desc"></div>
+      <div id="aboutMeta" class="about-meta"></div>
+    </div>
+
+    <div class="admin-footer-wrap">
+      <a id="adminPanelBtn" class="admin-panel-btn" href="/admin.html?slug=kaya">Partner Admin Paneli</a>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const darkThemeBtn = document.getElementById('darkThemeBtn');
+      const lightThemeBtn = document.getElementById('lightThemeBtn');
+
+      function applyTheme(mode) {
+        const isLight = mode !== 'dark';
+        document.body.classList.toggle('light-mode', isLight);
+        darkThemeBtn?.classList.toggle('active', !isLight);
+        lightThemeBtn?.classList.toggle('active', isLight);
+      }
+
+      try { localStorage.removeItem('yenegel_theme_mode'); } catch {}
+      applyTheme('light');
+      darkThemeBtn?.addEventListener('click', () => applyTheme('dark'));
+      lightThemeBtn?.addEventListener('click', () => applyTheme('light'));
+
+      const params = new URLSearchParams(window.location.search);
+      const slug = (params.get('slug') || 'kaya').trim().toLowerCase();
+
+      const adminPanelBtn = document.getElementById('adminPanelBtn');
+      if (adminPanelBtn) {
+        adminPanelBtn.href = `/admin.html?slug=${encodeURIComponent(slug)}`;
+      }
+
+      const tokenKey = `yenegel_visitor_${slug}`;
+      let visitorToken = '';
+      try {
+        visitorToken = localStorage.getItem(tokenKey) || '';
+        if (!visitorToken) {
+          visitorToken = 'v_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36);
+          localStorage.setItem(tokenKey, visitorToken);
+        }
+      } catch {
+        visitorToken = 'v_temp_' + slug;
+      }
+
+      const restNameEl = document.getElementById('restName');
+      const rewardBannerEl = document.getElementById('rewardBanner');
+      const stampsGridEl = document.getElementById('stampsGrid');
+      const progressTextEl = document.getElementById('progressText');
+      const totalSpentTextEl = document.getElementById('totalSpentText');
+      const bonusBalanceTextEl = document.getElementById('bonusBalanceText');
+      const openStampBtn = document.getElementById('openStampBtn');
+      const redeemBtn = document.getElementById('redeemBtn');
+      const undoBtn = document.getElementById('undoBtn');
+      const mainMsgEl = document.getElementById('mainMsg');
+
+      const cashierPanel = document.getElementById('cashierPanel');
+      const cashierTitle = document.getElementById('cashierTitle');
+      const amountFieldWrap = document.getElementById('amountFieldWrap');
+      const billAmountInput = document.getElementById('billAmountInput');
+      const pinInput = document.getElementById('pinInput');
+      const confirmCashierBtn = document.getElementById('confirmCashierBtn');
+      const cancelCashierBtn = document.getElementById('cancelCashierBtn');
+      const cashierMsgEl = document.getElementById('cashierMsg');
+
+      const aboutTextEl = document.getElementById('aboutText');
+      const aboutMetaEl = document.getElementById('aboutMeta');
+
+      let currentAction = 'stamp';
+      let stateRestaurant = null;
+      let stateCard = null;
+
+      function renderUI() {
+        const r = stateRestaurant || {};
+        const c = stateCard || { stamps_count: 0, reward_unlocked: false, total_spent: 0, bonus_balance: 0 };
+
+        restNameEl.textContent = r.name || slug;
+        rewardBannerEl.textContent = r.reward_text || 'BONUS';
+
+        const goal = Math.max(1, Number(r.stamp_goal || 5));
+        const stamps = Math.max(0, Number(c.stamps_count || 0));
+
+        stampsGridEl.innerHTML = '';
+        for (let i = 1; i <= goal; i++) {
+          const slot = document.createElement('div');
+          slot.className = 'stamp-slot' + (i <= stamps ? ' filled' : '');
+          slot.textContent = i <= stamps ? '✓' : String(i);
+          stampsGridEl.appendChild(slot);
+        }
+
+        progressTextEl.textContent = `${stamps} / ${goal} çəntik`;
+        totalSpentTextEl.textContent = `${Number(c.total_spent || 0).toFixed(2)} AZN`;
+        bonusBalanceTextEl.textContent = `${Number(c.bonus_balance || 0).toFixed(2)} AZN`;
+
+        redeemBtn.classList.toggle('hidden', !c.reward_unlocked);
+
+        aboutTextEl.textContent = r.about || '';
+        const metaLines = [];
+        if (r.address) metaLines.push(`Ünvan: ${r.address}`);
+        if (r.phone) metaLines.push(`Əlaqə: ${r.phone}`);
+        if (r.instagram) metaLines.push(`Instagram: ${r.instagram}`);
+        aboutMetaEl.innerHTML = metaLines.map(line => `<div>${line}</div>`).join('');
+      }
+
+      async function loadCard() {
+        try {
+          const res = await fetch(`/.netlify/functions/get-card?slug=${encodeURIComponent(slug)}&visitorToken=${encodeURIComponent(visitorToken)}`);
+          const data = await res.json();
+          if (!res.ok) {
+            mainMsgEl.textContent = data.error || 'Məlumat yüklənmədi.';
+            mainMsgEl.className = 'msg err';
+            return;
+          }
+          stateRestaurant = data.restaurant;
+          stateCard = data.card;
+          renderUI();
+        } catch {
+          mainMsgEl.textContent = 'Serverlə əlaqə alınmadı.';
+          mainMsgEl.className = 'msg err';
+        }
+      }
+
+      function openCashier(action) {
+        currentAction = action;
+        cashierMsgEl.textContent = '';
+        pinInput.value = '';
+        billAmountInput.value = '';
+        amountFieldWrap.classList.toggle('hidden', action !== 'stamp');
+
+        if (action === 'stamp') cashierTitle.textContent = 'Çəntik Əlavə Et (Kassir)';
+        else if (action === 'redeem') cashierTitle.textContent = 'Bonusu İstifadə Et (Kassir)';
+        else cashierTitle.textContent = 'Son Çəntiyi Geri Al (Kassir)';
+
+        cashierPanel.classList.remove('hidden');
+      }
+
+      function closeCashier() {
+        cashierPanel.classList.add('hidden');
+        cashierMsgEl.textContent = '';
+      }
+
+      async function handleCashierConfirm() {
+        cashierMsgEl.textContent = '';
+        mainMsgEl.textContent = '';
+
+        const pin = pinInput.value.trim();
+        if (!/^\d{4}$/.test(pin)) {
+          cashierMsgEl.textContent = 'PİN kod tam 4 rəqəm olmalıdır.';
+          return;
+        }
+
+        let endpoint = '/.netlify/functions/add-stamp';
+        const payload = { slug, visitorToken, pin };
+
+        if (currentAction === 'stamp') {
+          const amount = Number(billAmountInput.value);
+          if (!Number.isFinite(amount) || amount <= 0) {
+            cashierMsgEl.textContent = 'Düzgün hesab məbləği daxil edin.';
+            return;
+          }
+          payload.amount = amount;
+          endpoint = '/.netlify/functions/add-stamp';
+        } else if (currentAction === 'redeem') {
+          endpoint = '/.netlify/functions/redeem-bonus';
+        } else if (currentAction === 'undo') {
+          endpoint = '/.netlify/functions/undo-stamp';
+        }
+
+        confirmCashierBtn.disabled = true;
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            cashierMsgEl.textContent = data.error || 'Əməliyyat alınmadı.';
+            return;
+          }
+
+          closeCashier();
+          await loadCard();
+          mainMsgEl.textContent = data.message || 'Əməliyyat uğurla tamamlandı!';
+          mainMsgEl.className = 'msg ok';
+        } catch {
+          cashierMsgEl.textContent = 'Şəbəkə xətası baş verdi.';
+        } finally {
+          confirmCashierBtn.disabled = false;
+        }
+      }
+
+      openStampBtn.addEventListener('click', () => openCashier('stamp'));
+      redeemBtn.addEventListener('click', () => openCashier('redeem'));
+      undoBtn.addEventListener('click', () => openCashier('undo'));
+      cancelCashierBtn.addEventListener('click', closeCashier);
+      confirmCashierBtn.addEventListener('click', handleCashierConfirm);
+
+      loadCard();
+    })();
+  </script>
+</body>
+</html>

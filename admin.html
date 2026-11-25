@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YeneGel — Restoran Admin Paneli</title>
+  <style>
+    :root {
+      --bg-dark: #061324;
+      --bg-surface: #0b1f38;
+      --bg-card: #0f2948;
+      --blue: #38bdf8;
+      --blue-light: #bae6fd;
+      --blue-deep: #0284c7;
+      --blue-dim: rgba(56, 189, 248, 0.14);
+      --border: rgba(125, 211, 252, 0.24);
+      --text-main: #f0f9ff;
+      --text-muted: #93c5fd;
+      --btn-dark-text: #041222;
+      --badge-bg: linear-gradient(145deg, #102d50, #07192e);
+      --input-bg: #07192e;
+      --body-grad-top: #0c2a4d;
+      --danger: #f87171;
+      --success: #4ade80;
+    }
+
+    body.light-mode {
+      --bg-dark: #eff8ff;
+      --bg-surface: #e0f2fe;
+      --bg-card: #ffffff;
+      --blue: #0284c7;
+      --blue-light: #0369a1;
+      --blue-deep: #0369a1;
+      --blue-dim: rgba(14, 165, 233, 0.12);
+      --border: rgba(2, 132, 199, 0.22);
+      --text-main: #082f49;
+      --text-muted: #3b6e8c;
+      --btn-dark-text: #ffffff;
+      --badge-bg: linear-gradient(145deg, #ffffff, #e0f2fe);
+      --input-bg: #f0f9ff;
+      --body-grad-top: #bae6fd;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+    body {
+      background: radial-gradient(circle at top, var(--body-grad-top) 0%, var(--bg-dark) 65%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 20px 16px 64px;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand-pill {
+      background: var(--badge-bg);
+      border: 1.5px solid var(--blue);
+      border-radius: 14px;
+      padding: 8px 16px;
+      box-shadow: 0 8px 20px rgba(2, 132, 199, 0.14);
+    }
+
+    .brand-pill strong {
+      display: block;
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--blue-light);
+    }
+
+    .brand-pill span {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .theme-switch {
+      display: inline-flex;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .theme-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .theme-btn.active {
+      background: var(--blue);
+      color: var(--btn-dark-text);
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 14px 32px rgba(2, 132, 199, 0.12);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--blue-light);
+      margin-bottom: 4px;
+    }
+
+    .card-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.45;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 460px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .input, .select, .textarea {
+      width: 100%;
+      padding: 11px 13px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      background: var(--input-bg);
+      color: var(--text-main);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .input:focus, .select:focus, .textarea:focus {
+      border-color: var(--blue);
+    }
+
+    .textarea {
+      min-height: 78px;
+      resize: vertical;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--blue), var(--blue-deep));
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 13px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(2, 132, 199, 0.25);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-ghost {
+      background: var(--bg-surface);
+      color: var(--blue-light);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .status-msg {
+      margin-top: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      min-height: 20px;
+    }
+
+    .status-msg.err { color: var(--danger); }
+    .status-msg.ok { color: var(--success); }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .slug-tag {
+      display: inline-block;
+      background: var(--blue-dim);
+      color: var(--blue-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body class="light-mode">
+  <div class="app">
+    <div class="top-bar">
+      <div class="brand-pill">
+        <strong>YeneGel</strong>
+        <span>Partner Admin</span>
+      </div>
+
+      <div class="theme-switch" role="group" aria-label="Tema seçimi">
+        <button id="lightThemeBtn" type="button" class="theme-btn active">Light</button>
+        <button id="darkThemeBtn" type="button" class="theme-btn">Dark</button>
+      </div>
+    </div>
+
+    <div id="loginCard" class="card">
+      <div class="card-title">Restoran Panelinə Giriş</div>
+      <div class="card-sub">Sizə verilmiş xüsusi restoran kodunu daxil edib çəntik sayını, kassir PİN-ini və bonus ayarlarını idarə edin.</div>
+
+      <div class="field">
+        <label for="slugInput">Restoran kodu (slug)</label>
+        <input id="slugInput" class="input" type="text" placeholder="məs: kaya" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label for="accessCodeInput">Xüsusi giriş kodu</label>
+        <input id="accessCodeInput" class="input" type="password" placeholder="••••••••" autocomplete="off" />
+      </div>
+
+      <button id="loginBtn" type="button" class="btn-primary">Panelə daxil ol</button>
+      <div id="loginMsg" class="status-msg err"></div>
+    </div>
+
+    <div id="settingsCard" class="card hidden">
+      <div class="panel-head">
+        <div>
+          <div id="activeRestTitle" class="card-title">Restoran</div>
+          <span id="activeSlugBadge" class="slug-tag">slug: -</span>
+        </div>
+        <button id="logoutBtn" type="button" class="btn-ghost">Çıxış</button>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="stampGoalInput">Çəntik sayı (hədəf)</label>
+          <input id="stampGoalInput" class="input" type="number" min="1" max="20" step="1" />
+        </div>
+
+        <div class="field">
+          <label for="cashierPinInput">Kassir PİN kodu (4 rəqəm)</label>
+          <input id="cashierPinInput" class="input" type="text" inputmode="numeric" maxlength="4" placeholder="1234" />
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="bonusModeSelect">Bonus rejimi</label>
+          <select id="bonusModeSelect" class="select">
+            <option value="fixed">Sabit məbləğ (AZN)</option>
+            <option value="percent">Faiz (%)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label id="bonusValueLabel" for="bonusValueInput">Bonus məbləği (AZN)</label>
+          <input id="bonusValueInput" class="input" type="number" step="0.01" min="0" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="rewardTextInput">Bonus banner mətni</label>
+        <input id="rewardTextInput" class="input" type="text" placeholder="məs: 10 AZN BONUS" />
+      </div>
+
+      <div class="field">
+        <label for="restNameInput">Restoran adı</label>
+        <input id="restNameInput" class="input" type="text" />
+      </div>
+
+      <div class="field">
+        <label for="aboutInput">Restoran haqqında</label>
+        <textarea id="aboutInput" class="textarea"></textarea>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="addressInput">Ünvan</label>
+          <input id="addressInput" class="input" type="text" />
+        </div>
+        <div class="field">
+          <label for="phoneInput">Əlaqə nömrəsi</label>
+          <input id="phoneInput" class="input" type="text" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="instagramInput">Instagram</label>
+        <input id="instagramInput" class="input" type="text" placeholder="@restoran" />
+      </div>
+
+      <button id="saveBtn" type="button" class="btn-primary">Dəyişiklikləri yadda saxla</button>
+      <div id="saveMsg" class="status-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const darkThemeBtn = document.getElementById('darkThemeBtn');
+      const lightThemeBtn = document.getElementById('lightThemeBtn');
+
+      function applyTheme(mode) {
+        const isLight = mode !== 'dark';
+        document.body.classList.toggle('light-mode', isLight);
+        darkThemeBtn?.classList.toggle('active', !isLight);
+        lightThemeBtn?.classList.toggle('active', isLight);
+      }
+
+      try { localStorage.removeItem('yenegel_theme_mode'); } catch {}
+      applyTheme('light');
+      darkThemeBtn?.addEventListener('click', () => applyTheme('dark'));
+      lightThemeBtn?.addEventListener('click', () => applyTheme('light'));
+
+      const params = new URLSearchParams(window.location.search);
+      const slugInput = document.getElementById('slugInput');
+      const accessCodeInput = document.getElementById('accessCodeInput');
+      const loginBtn = document.getElementById('loginBtn');
+      const loginMsg = document.getElementById('loginMsg');
+      const loginCard = document.getElementById('loginCard');
+      const settingsCard = document.getElementById('settingsCard');
+      const logoutBtn = document.getElementById('logoutBtn');
+
+      const activeRestTitle = document.getElementById('activeRestTitle');
+      const activeSlugBadge = document.getElementById('activeSlugBadge');
+      const stampGoalInput = document.getElementById('stampGoalInput');
+      const cashierPinInput = document.getElementById('cashierPinInput');
+      const bonusModeSelect = document.getElementById('bonusModeSelect');
+      const bonusValueLabel = document.getElementById('bonusValueLabel');
+      const bonusValueInput = document.getElementById('bonusValueInput');
+      const rewardTextInput = document.getElementById('rewardTextInput');
+      const restNameInput = document.getElementById('restNameInput');
+      const aboutInput = document.getElementById('aboutInput');
+      const addressInput = document.getElementById('addressInput');
+      const phoneInput = document.getElementById('phoneInput');
+      const instagramInput = document.getElementById('instagramInput');
+      const saveBtn = document.getElementById('saveBtn');
+      const saveMsg = document.getElementById('saveMsg');
+
+      if (params.get('slug') && slugInput) {
+        slugInput.value = params.get('slug').trim().toLowerCase();
+      }
+
+      let currentSession = { slug: '', accessCode: '' };
+
+      function syncBonusLabel() {
+        const isPercent = bonusModeSelect.value === 'percent';
+        bonusValueLabel.textContent = isPercent ? 'Bonus faizi (%)' : 'Bonus məbləği (AZN)';
+      }
+
+      bonusModeSelect.addEventListener('change', syncBonusLabel);
+
+      cashierPinInput.addEventListener('input', () => {
+        cashierPinInput.value = cashierPinInput.value.replace(/\D/g, '').slice(0, 4);
+      });
+
+      function fillForm(r) {
+        activeRestTitle.textContent = r.name || currentSession.slug;
+        activeSlugBadge.textContent = `slug: ${currentSession.slug}`;
+        stampGoalInput.value = r.stamp_goal ?? 5;
+        cashierPinInput.value = r.pin_code ?? r.cashier_pin ?? '';
+        bonusModeSelect.value = (r.bonus_mode || 'fixed').toLowerCase() === 'percent' ? 'percent' : 'fixed';
+        syncBonusLabel();
+        bonusValueInput.value = bonusModeSelect.value === 'percent'
+          ? (r.bonus_percent ?? 10)
+          : (r.bonus_fixed_amount ?? 10);
+        rewardTextInput.value = r.reward_text ?? '';
+        restNameInput.value = r.name ?? '';
+        aboutInput.value = r.about ?? '';
+        addressInput.value = r.address ?? '';
+        phoneInput.value = r.phone ?? '';
+        instagramInput.value = r.instagram ?? '';
+      }
+
+      async function handleLogin() {
+        const slug = slugInput.value.trim().toLowerCase();
+        const accessCode = accessCodeInput.value.trim();
+        loginMsg.textContent = '';
+
+        if (!slug || !accessCode) {
+          loginMsg.textContent = 'Restoran kodunu və xüsusi giriş kodunu daxil edin.';
+          return;
+        }
+
+        loginBtn.disabled = true;
+        try {
+          const res = await fetch('/.netlify/functions/admin-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug, accessCode })
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            loginMsg.textContent = data.error || 'Kod və ya restoran adı yanlışdır.';
+            return;
+          }
+
+          currentSession = { slug, accessCode };
+          fillForm(data.restaurant || {});
+          loginCard.classList.add('hidden');
+          settingsCard.classList.remove('hidden');
+        } catch {
+          loginMsg.textContent = 'Serverlə əlaqə alınmadı.';
+        } finally {
+          loginBtn.disabled = false;
+        }
+      }
+
+      async function handleSave() {
+        saveMsg.textContent = '';
+        saveMsg.className = 'status-msg';
+
+        const stampGoal = Number(stampGoalInput.value);
+        const cashierPin = cashierPinInput.value.trim();
+        const bonusMode = bonusModeSelect.value;
+        const bonusNum = Number(bonusValueInput.value);
+
+        if (!Number.isInteger(stampGoal) || stampGoal < 1 || stampGoal > 20) {
+          saveMsg.textContent = 'Çəntik sayı 1 ilə 20 arasında tam ədəd olmalıdır.';
+          saveMsg.classList.add('err');
+          return;
+        }
+
+        if (!/^\d{4}$/.test(cashierPin)) {
+          saveMsg.textContent = 'Kassir PİN kodu tam 4 rəqəmdən ibarət olmalıdır.';
+          saveMsg.classList.add('err');
+          return;
+        }
+
+        if (!Number.isFinite(bonusNum) || bonusNum < 0) {
+          saveMsg.textContent = 'Bonus dəyərini düzgün daxil edin.';
+          saveMsg.classList.add('err');
+          return;
+        }
+
+        saveBtn.disabled = true;
+        try {
+          const payload = {
+            slug: currentSession.slug,
+            accessCode: currentSession.accessCode,
+            stamp_goal: stampGoal,
+            cashier_pin: cashierPin,
+            bonus_mode: bonusMode,
+            bonus_fixed_amount: bonusMode === 'fixed' ? bonusNum : undefined,
+            bonus_percent: bonusMode === 'percent' ? bonusNum : undefined,
+            reward_text: rewardTextInput.value.trim(),
+            name: restNameInput.value.trim(),
+            about: aboutInput.value.trim(),
+            address: addressInput.value.trim(),
+            phone: phoneInput.value.trim(),
+            instagram: instagramInput.value.trim()
+          };
+
+          const res = await fetch('/.netlify/functions/update-restaurant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            saveMsg.textContent = data.error || 'Yadda saxlanılarkən xəta baş verdi.';
+            saveMsg.classList.add('err');
+            return;
+          }
+
+          if (data.restaurant) fillForm(data.restaurant);
+          saveMsg.textContent = 'Ayarlar uğurla yeniləndi!';
+          saveMsg.classList.add('ok');
+        } catch {
+          saveMsg.textContent = 'Şəbəkə xətası baş verdi.';
+          saveMsg.classList.add('err');
+        } finally {
+          saveBtn.disabled = false;
+        }
+      }
+
+      logoutBtn.addEventListener('click', () => {
+        currentSession = { slug: '', accessCode: '' };
+        accessCodeInput.value = '';
+        saveMsg.textContent = '';
+        settingsCard.classList.add('hidden');
+        loginCard.classList.remove('hidden');
+      });
+
+      loginBtn.addEventListener('click', handleLogin);
+      saveBtn.addEventListener('click', handleSave);
+    })();
+  </script>
+</body>
+</html>
