@@ -6,168 +6,170 @@
   <title>Yenə gəl — Restoran Admin Paneli</title>
   <style>
     :root {
-      --bg-dark: #071a12;
-      --bg-surface: #0d261a;
-      --bg-card: #123523;
-      --blue: #35c98d;
-      --blue-light: #b7f2d5;
-      --blue-deep: #0d8158;
-      --blue-dim: rgba(53, 201, 141, 0.14);
-      --border: rgba(134, 239, 172, 0.22);
-      --text-main: #effcf4;
-      --text-muted: #a4cbb2;
-      --btn-dark-text: #062719;
-      --badge-bg: linear-gradient(145deg, #143b28, #0a2116);
-      --input-bg: #091f15;
-      --body-grad-top: #16482f;
-      --danger: #f87171;
-      --success: #4ade80;
+      color-scheme: light;
+      --page-bg: #F7F6F2;
+      --surface: #FFFFFF;
+      --surface-soft: #F7F6F2;
+      --border: #E5E2DC;
+      --text-main: #181816;
+      --text-muted: #786B59;
+      --accent: #181816;
+      --accent-text: #FFFFFF;
+      --metallic: linear-gradient(155deg, #EFECE6 0%, #DDD6CA 52%, #F7F5F0 100%);
+      --shadow: 0 10px 30px rgba(24, 24, 22, 0.05);
+      --danger: #A33D32;
+      --success: #3D6B4E;
     }
 
-    body.light-mode {
-      --bg-dark: #edf6ef;
-      --bg-surface: #e0eee3;
-      --bg-card: #ffffff;
-      --blue: #188154;
-      --blue-light: #176844;
-      --blue-deep: #0d6842;
-      --blue-dim: rgba(24, 129, 84, 0.11);
-      --border: rgba(24, 129, 84, 0.2);
-      --text-main: #173a28;
-      --text-muted: #557362;
-      --btn-dark-text: #ffffff;
-      --badge-bg: linear-gradient(145deg, #ffffff, #e5f3e8);
-      --input-bg: #f5faf6;
-      --body-grad-top: #cce8d3;
+    body:not(.light-mode) {
+      color-scheme: dark;
+      --page-bg: #181816;
+      --surface: #242320;
+      --surface-soft: #302E2A;
+      --border: #49453F;
+      --text-main: #F7F5F0;
+      --text-muted: #C0B6A8;
+      --accent: #F7F5F0;
+      --accent-text: #181816;
+      --metallic: linear-gradient(155deg, #3B3832 0%, #292722 52%, #35322C 100%);
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
 
     body {
-      background: radial-gradient(circle at top, var(--body-grad-top) 0%, var(--bg-dark) 65%);
+      background: var(--page-bg);
       color: var(--text-main);
       min-height: 100vh;
       display: flex;
       justify-content: center;
-      padding: 20px 16px 64px;
+      padding: 24px 16px 56px;
       transition: background 0.25s ease, color 0.25s ease;
     }
 
     .app {
       width: 100%;
-      max-width: 520px;
+      max-width: 540px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 17px;
     }
 
     .top-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 14px;
     }
 
     .top-brand-group {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       min-width: 0;
     }
 
     .back-btn {
       flex: 0 0 auto;
-      padding: 0 12px;
-      height: 36px;
+      padding: 0 13px;
+      height: 39px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       border: 1px solid var(--border);
-      border-radius: 11px;
-      background: var(--bg-surface);
-      color: var(--blue-light);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--text-muted);
       font-size: 13px;
       font-weight: 700;
       line-height: 1;
       text-decoration: none;
       white-space: nowrap;
       cursor: pointer;
+      transition: border-color 0.2s ease, transform 0.15s ease;
     }
 
     .back-btn:hover {
-      border-color: var(--blue);
+      border-color: var(--text-muted);
+      transform: translateY(-1px);
     }
 
     .brand-pill {
-      background: var(--badge-bg);
-      border: 1.5px solid var(--blue);
-      border-radius: 14px;
-      padding: 8px 10px;
-      box-shadow: 0 8px 20px rgba(19, 105, 65, 0.14);
+      padding: 2px 0;
     }
 
     .brand-pill strong {
       display: block;
-      font-size: 13px;
-      letter-spacing: 0.4px;
+      font-size: 16px;
+      line-height: 1.2;
+      letter-spacing: -0.3px;
       text-transform: none;
-      color: var(--blue-light);
+      color: var(--text-main);
     }
 
     .brand-pill span {
       display: block;
       font-size: 10px;
-      letter-spacing: 1.4px;
+      font-weight: 750;
+      letter-spacing: 1.5px;
       text-transform: uppercase;
       color: var(--text-muted);
-      margin-top: 2px;
+      margin-top: 5px;
     }
 
     .theme-switch {
       display: inline-flex;
-      background: var(--bg-surface);
+      flex: 0 0 auto;
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 13px;
       padding: 3px;
       gap: 3px;
+      box-shadow: 0 3px 12px rgba(24, 24, 22, 0.04);
     }
 
     .theme-btn {
       border: none;
       background: transparent;
       color: var(--text-muted);
-      padding: 6px 12px;
-      border-radius: 9px;
+      padding: 7px 12px;
+      border-radius: 10px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease;
     }
 
     .theme-btn.active {
-      background: var(--blue);
-      color: var(--btn-dark-text);
+      background: var(--accent);
+      color: var(--accent-text);
     }
 
     .card {
-      background: var(--bg-card);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 20px;
-      box-shadow: 0 14px 32px rgba(19, 105, 65, 0.12);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: var(--shadow);
     }
 
     .card-title {
       font-size: 16px;
       font-weight: 800;
-      color: var(--blue-light);
-      margin-bottom: 4px;
+      color: var(--text-main);
+      margin-bottom: 6px;
     }
 
     .card-sub {
       font-size: 13px;
       color: var(--text-muted);
-      margin-bottom: 16px;
-      line-height: 1.45;
+      margin-bottom: 20px;
+      line-height: 1.55;
     }
 
     .grid-2 {
@@ -195,17 +197,18 @@
     .input, .select, .textarea {
       width: 100%;
       padding: 11px 13px;
-      border: 1.5px solid var(--border);
+      border: 1px solid var(--border);
       border-radius: 12px;
-      background: var(--input-bg);
+      background: var(--surface-soft);
       color: var(--text-main);
       font-size: 14px;
       outline: none;
-      transition: border-color 0.2s ease;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
     .input:focus, .select:focus, .textarea:focus {
-      border-color: var(--blue);
+      border-color: var(--text-muted);
+      box-shadow: 0 0 0 3px rgba(120, 107, 89, 0.1);
     }
 
     .textarea {
@@ -215,15 +218,26 @@
 
     .btn-primary {
       width: 100%;
-      background: linear-gradient(135deg, var(--blue), var(--blue-deep));
+      background: #181816;
       color: #ffffff;
       border: none;
-      border-radius: 12px;
-      padding: 13px 16px;
+      border-radius: 13px;
+      padding: 14px 16px;
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
-      box-shadow: 0 6px 18px rgba(19, 105, 65, 0.24);
+      box-shadow: 0 6px 16px rgba(24, 24, 22, 0.14);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+    }
+
+    body:not(.light-mode) .btn-primary {
+      background: #F7F5F0;
+      color: #181816;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 9px 20px rgba(24, 24, 22, 0.18);
     }
 
     .btn-primary:disabled {
@@ -232,11 +246,11 @@
     }
 
     .btn-ghost {
-      background: var(--bg-surface);
-      color: var(--blue-light);
+      background: var(--surface);
+      color: var(--text-muted);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 12px;
+      border-radius: 12px;
+      padding: 9px 13px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
@@ -251,6 +265,7 @@
 
     .status-msg.err { color: var(--danger); }
     .status-msg.ok { color: var(--success); }
+    .status-msg:empty { display: none; }
 
     .panel-head {
       display: flex;
@@ -258,19 +273,37 @@
       justify-content: space-between;
       gap: 10px;
       margin-bottom: 14px;
-      padding-bottom: 12px;
+      padding-bottom: 14px;
       border-bottom: 1px solid var(--border);
     }
 
     .slug-tag {
       display: inline-block;
-      background: var(--blue-dim);
-      color: var(--blue-light);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 4px 10px;
+      background: var(--metallic);
+      color: var(--text-muted);
+      border: 1px solid #D8D1C5;
+      border-radius: 9px;
+      padding: 5px 10px;
       font-size: 12px;
       font-weight: 800;
+    }
+
+    body:not(.light-mode) .slug-tag {
+      border-color: var(--border);
+    }
+
+    button:focus-visible, a:focus-visible {
+      outline: 2px solid var(--text-muted);
+      outline-offset: 3px;
+    }
+
+    @media (max-width: 360px) {
+      body { padding: 18px 12px 40px; }
+      .card { padding: 17px; }
+      .top-brand-group { gap: 7px; }
+      .back-btn { padding: 0 10px; }
+      .brand-pill strong { font-size: 14px; }
+      .theme-btn { padding: 7px 9px; }
     }
 
     .hidden { display: none !important; }
