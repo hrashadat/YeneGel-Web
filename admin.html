@@ -165,6 +165,14 @@
       margin-bottom: 6px;
     }
 
+    .char-counter {
+      display: block;
+      margin-top: 5px;
+      color: var(--text-muted);
+      font-size: 11px;
+      text-align: right;
+    }
+
     .card-sub {
       font-size: 13px;
       color: var(--text-muted);
@@ -382,7 +390,8 @@
 
       <div class="field">
         <label for="rewardTextInput">Bonus banner mətni</label>
-        <input id="rewardTextInput" class="input" type="text" placeholder="məs: 10 AZN BONUS" />
+        <input id="rewardTextInput" class="input" type="text" maxlength="45" placeholder="məs: 10 AZN BONUS" />
+        <small id="rewardTextCounter" class="char-counter" aria-live="polite">0 / 45</small>
       </div>
 
       <div class="field">
@@ -451,6 +460,8 @@
       const bonusValueLabel = document.getElementById('bonusValueLabel');
       const bonusValueInput = document.getElementById('bonusValueInput');
       const rewardTextInput = document.getElementById('rewardTextInput');
+      const rewardTextCounter = document.getElementById('rewardTextCounter');
+      const rewardTextMaxLength = 45;
       const restNameInput = document.getElementById('restNameInput');
       const aboutInput = document.getElementById('aboutInput');
       const addressInput = document.getElementById('addressInput');
@@ -477,6 +488,13 @@
           saveRedirectTimer = null;
         }
       }
+
+      function updateRewardTextCounter() {
+        rewardTextInput.value = rewardTextInput.value.slice(0, rewardTextMaxLength);
+        rewardTextCounter.textContent = `${rewardTextInput.value.length} / ${rewardTextMaxLength}`;
+      }
+
+      rewardTextInput.addEventListener('input', updateRewardTextCounter);
 
       function syncBonusLabel() {
         const isPercent = bonusModeSelect.value === 'percent';
@@ -517,7 +535,8 @@
         bonusValueInput.value = bonusModeSelect.value === 'percent'
           ? (r.bonus_percent ?? 10)
           : (r.bonus_fixed_amount ?? 10);
-        rewardTextInput.value = r.reward_text ?? '';
+        rewardTextInput.value = String(r.reward_text ?? '').slice(0, rewardTextMaxLength);
+        updateRewardTextCounter();
         restNameInput.value = r.name ?? '';
         aboutInput.value = r.about ?? '';
         addressInput.value = r.address ?? '';
@@ -600,7 +619,7 @@
             bonus_mode: bonusMode,
             bonus_fixed_amount: bonusMode === 'fixed' ? bonusNum : undefined,
             bonus_percent: bonusMode === 'percent' ? bonusNum : undefined,
-            reward_text: rewardTextInput.value.trim(),
+            reward_text: rewardTextInput.value.replace(/\s+/g, ' ').trim(),
             name: restNameInput.value.trim(),
             about: aboutInput.value.trim(),
             address: addressInput.value.trim(),
@@ -624,6 +643,10 @@
           if (currentSession !== saveSession) return;
 
           if (data.restaurant) fillForm(data.restaurant);
+          else {
+            rewardTextInput.value = payload.reward_text;
+            updateRewardTextCounter();
+          }
           saveMsg.textContent = 'Dəyişikliklər yadda saxlanıldı! Ana səhifəyə yönləndirilir...';
           saveMsg.classList.add('ok');
           const redirectSlug = currentSession.slug || slugInput.value.trim().toLowerCase() || 'kaya';

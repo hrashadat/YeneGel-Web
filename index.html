@@ -144,25 +144,31 @@
 
     .merchant-heading {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      gap: 10px;
+      gap: 12px;
+      min-width: 0;
       margin-bottom: 19px;
     }
 
     .rest-name {
+      flex: 1 1 auto;
       min-width: 0;
       font-size: 18px;
       font-weight: 800;
       color: var(--text-main);
       line-height: 1.25;
       letter-spacing: -0.35px;
+      overflow-wrap: break-word;
     }
 
     .reward-banner {
-      flex: 0 0 auto;
+      flex: 0 1 62%;
       display: inline-flex;
       align-items: center;
+      justify-content: flex-end;
+      min-width: 0;
+      max-width: 62%;
       min-height: 27px;
       background: #181816;
       color: #FFFFFF;
@@ -173,6 +179,11 @@
       font-weight: 800;
       letter-spacing: 0.85px;
       text-transform: uppercase;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      text-align: right;
+      line-height: 1.25;
     }
 
     .stamps-grid {
