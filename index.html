@@ -525,7 +525,7 @@
         </div>
         <div class="field">
           <label for="pinInput">Kassir PİN kodu (4 rəqəm)</label>
-          <input id="pinInput" class="input" type="password" inputmode="numeric" maxlength="4" placeholder="••••" />
+          <input id="pinInput" class="input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="••••" />
         </div>
         <div class="actions">
           <button id="confirmCashierBtn" type="button" class="btn-primary">Təsdiqlə</button>
@@ -615,6 +615,23 @@
         billAmountInput.value = value;
       });
 
+      const allowedPinKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+      pinInput.addEventListener('keydown', event => {
+        if (event.ctrlKey || event.metaKey || allowedPinKeys.includes(event.key)) return;
+        if (!/^\d$/.test(event.key)) event.preventDefault();
+      });
+      pinInput.addEventListener('input', () => {
+        pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4);
+      });
+      pinInput.addEventListener('paste', event => {
+        event.preventDefault();
+        const pastedText = event.clipboardData?.getData('text') || '';
+        const start = pinInput.selectionStart ?? pinInput.value.length;
+        const end = pinInput.selectionEnd ?? start;
+        pinInput.setRangeText(pastedText, start, end, 'end');
+        pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4);
+      });
+
       let currentAction = 'stamp';
       let stateRestaurant = null;
       let stateCard = null;
@@ -626,8 +643,11 @@
         restNameEl.textContent = r.name || slug;
         rewardBannerEl.textContent = (r.reward_text || 'BONUS').replace(/\bVIP\s+/gi, '');
 
-        const goal = Math.max(1, Number(r.stamp_goal || 5));
-        const stamps = Math.max(0, Number(c.stamps_count || 0));
+        const configuredGoal = Number(r.stamp_goal);
+        const goal = Number.isInteger(configuredGoal) && configuredGoal > 0 ? configuredGoal : 5;
+        const storedStamps = Number(c.stamps_count);
+        const stamps = Number.isFinite(storedStamps) ? Math.max(0, Math.floor(storedStamps)) : 0;
+        const shouldUnlock = stamps >= goal;
 
         stampsGridEl.innerHTML = '';
         for (let i = 1; i <= goal; i++) {
@@ -637,35 +657,42 @@
           stampsGridEl.appendChild(slot);
         }
 
-        progressTextEl.textContent = `${stamps} / ${goal} çəntik`;
+        progressTextEl.textContent = `${Math.min(stamps, goal)} / ${goal} çəntik`;
         totalSpentTextEl.textContent = `${Number(c.total_spent || 0).toFixed(2)} AZN`;
         bonusBalanceTextEl.textContent = `${Number(c.bonus_balance || 0).toFixed(2)} AZN`;
 
-        redeemBtn.classList.toggle('hidden', !c.reward_unlocked);
+        redeemBtn.classList.toggle('hidden', !shouldUnlock);
 
         aboutTextEl.textContent = r.about || '';
         const metaLines = [];
         if (r.address) metaLines.push(`Ünvan: ${r.address}`);
         if (r.phone) metaLines.push(`Əlaqə: ${r.phone}`);
         if (r.instagram) metaLines.push(`Instagram: ${r.instagram}`);
-        aboutMetaEl.innerHTML = metaLines.map(line => `<div>${line}</div>`).join('');
+        aboutMetaEl.textContent = '';
+        metaLines.forEach(line => {
+          const lineEl = document.createElement('div');
+          lineEl.textContent = line;
+          aboutMetaEl.appendChild(lineEl);
+        });
       }
 
       async function loadCard() {
         try {
           const res = await fetch(`/.netlify/functions/get-card?slug=${encodeURIComponent(slug)}&visitorToken=${encodeURIComponent(visitorToken)}`);
-          const data = await res.json();
-          if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.restaurant || !data.card) {
             mainMsgEl.textContent = data.error || 'Məlumat yüklənmədi.';
             mainMsgEl.className = 'msg err';
-            return;
+            return false;
           }
           stateRestaurant = data.restaurant;
           stateCard = data.card;
           renderUI();
+          return true;
         } catch {
           mainMsgEl.textContent = 'Serverlə əlaqə alınmadı.';
           mainMsgEl.className = 'msg err';
+          return false;
         }
       }
 
@@ -734,9 +761,13 @@
           }
 
           closeCashier();
-          await loadCard();
-          mainMsgEl.textContent = data.message || 'Əməliyyat uğurla tamamlandı!';
-          mainMsgEl.className = 'msg ok';
+          if (await loadCard()) {
+            mainMsgEl.textContent = data.message || 'Əməliyyat uğurla tamamlandı!';
+            mainMsgEl.className = 'msg ok';
+          } else {
+            mainMsgEl.textContent = 'Əməliyyat tamamlandı, lakin kart yenilənmədi. Səhifəni yeniləyin.';
+            mainMsgEl.className = 'msg err';
+          }
         } catch {
           cashierMsgEl.textContent = 'Şəbəkə xətası baş verdi.';
         } finally {
@@ -756,6 +787,9 @@
         if (event.key === 'Escape' && !cashierPanel.classList.contains('hidden')) {
           closeCashier();
         }
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') loadCard();
       });
 
       loadCard();

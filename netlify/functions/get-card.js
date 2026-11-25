@@ -1,4 +1,5 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const { normalizeCard } = require('../lib/loyalty');
 
 function getSupabaseConfig() {
   const rawUrl = (process.env.SUPABASE_URL || '').trim();
@@ -43,8 +44,16 @@ async function sbFetch(url, key, path, options = {}) {
 
 exports.handler = async (event) => {
   try {
-    const slug = (event.queryStringParameters?.slug || 'kaya').trim().toLowerCase();
-    const visitorToken = (event.queryStringParameters?.visitorToken || '').trim();
+    if (event.httpMethod !== 'GET') {
+      return {
+        statusCode: 405,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Method Not Allowed' })
+      };
+    }
+
+    const slug = String(event.queryStringParameters?.slug || 'kaya').trim().toLowerCase();
+    const visitorToken = String(event.queryStringParameters?.visitorToken || '').trim();
     const { url, key } = getSupabaseConfig();
 
     const restaurants = await sbFetch(
@@ -75,13 +84,7 @@ exports.handler = async (event) => {
         key,
         `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(visitorToken)}&select=id,stamps_count,reward_unlocked,last_stamped_at,total_spent,bonus_balance`
       );
-      if (cards?.[0]) {
-        card = {
-          ...cards[0],
-          total_spent: Number(cards[0].total_spent || 0),
-          bonus_balance: Number(cards[0].bonus_balance || 0)
-        };
-      }
+      if (cards?.[0]) card = normalizeCard(restaurant, cards[0]);
     }
 
     return {

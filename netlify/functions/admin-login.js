@@ -4,6 +4,7 @@ const JSON_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
+const { parseJsonObject } = require('../lib/request');
 
 function getSupabaseConfig() {
   const rawUrl = (process.env.SUPABASE_URL || '').trim();
@@ -58,7 +59,14 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
+    const body = parseJsonObject(event.body);
+    if (!body) {
+      return {
+        statusCode: 400,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' })
+      };
+    }
     const slug = String(body.slug || '').trim().toLowerCase();
     const accessCode = String(body.accessCode || body.adminCode || body.admin_code || '').trim();
 

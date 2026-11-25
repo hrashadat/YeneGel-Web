@@ -1,4 +1,6 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const { getStampGoal, normalizeCard } = require('../lib/loyalty');
+const { parseJsonObject } = require('../lib/request');
 
 function getSupabaseConfig() {
   const rawUrl = (process.env.SUPABASE_URL || '').trim();
@@ -40,7 +42,10 @@ exports.handler = async (event) => {
       return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Method not allowed' }) };
     }
 
-    const body = JSON.parse(event.body || '{}');
+    const body = parseJsonObject(event.body);
+    if (!body) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
+    }
     const slug = String(body.slug || 'kaya').trim().toLowerCase();
     const visitorToken = String(body.visitorToken || '').trim();
     const pin = String(body.pin || '').trim();
@@ -75,23 +80,38 @@ exports.handler = async (event) => {
       key,
       `loyalty_cards?restaurant_id=eq.${restaurant.id}&visitor_token=eq.${encodeURIComponent(visitorToken)}&select=*`
     );
-    const card = cards?.[0];
+    const storedCard = cards?.[0];
 
-    if (!card || !card.reward_unlocked) {
+    if (!storedCard) {
       return { statusCode: 422, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Aktiv bonus yoxdur.' }) };
     }
 
-    const redeemedBonus = Number(card.bonus_balance || 0);
+    const card = normalizeCard(restaurant, storedCard);
+    if (card.stamps_count < getStampGoal(restaurant)) {
+      return { statusCode: 422, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Aktiv bonus yoxdur.' }) };
+    }
 
-    await sbFetch(url, key, `loyalty_cards?id=eq.${card.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        stamps_count: 0,
-        reward_unlocked: false,
-        bonus_balance: 0,
-        total_spent: 0
-      })
-    });
+    const redeemedBonus = card.bonus_balance;
+
+    const goal = getStampGoal(restaurant);
+    const updatedCards = await sbFetch(
+      url,
+      key,
+      `loyalty_cards?id=eq.${encodeURIComponent(card.id)}&stamps_count=gte.${goal}`,
+      {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({
+          stamps_count: 0,
+          reward_unlocked: false,
+          bonus_balance: 0,
+          total_spent: 0
+        })
+      }
+    );
+    if (!updatedCards?.[0]) {
+      return { statusCode: 422, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Aktiv bonus yoxdur.' }) };
+    }
 
     await sbFetch(url, key, 'card_transactions', {
       method: 'POST',
@@ -109,7 +129,7 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers: JSON_HEADERS,
       body: JSON.stringify({
-        message: `${restaurant.reward_text} istifadə edildi və dairələr sıfırlandı!`,
+        message: `${restaurant.reward_text || 'BONUS'} istifadə edildi və dairələr sıfırlandı!`,
         stamps_count: 0,
         reward_unlocked: false,
         bonus_balance: 0,

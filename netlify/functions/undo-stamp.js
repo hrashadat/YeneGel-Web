@@ -1,4 +1,6 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const { getBonusBalance, getStampCount, getStampGoal, getTotalSpent, normalizeCard, roundMoney } = require('../lib/loyalty');
+const { parseJsonObject } = require('../lib/request');
 
 function getSupabaseConfig() {
   const rawUrl = (process.env.SUPABASE_URL || '').trim();
@@ -41,19 +43,6 @@ async function sbFetch(url, key, path, options = {}) {
   return data;
 }
 
-function roundMoney(val) {
-  return Math.max(0, Math.round((Number(val) + Number.EPSILON) * 100) / 100);
-}
-
-function calculateBonusAmount(restaurant, totalSpent) {
-  const mode = String(restaurant.bonus_mode || 'fixed').trim().toLowerCase();
-  if (mode === 'percent') {
-    const pct = Number(restaurant.bonus_percent || 0);
-    return roundMoney((Number(totalSpent || 0) * pct) / 100);
-  }
-  return roundMoney(Number(restaurant.bonus_fixed_amount ?? 10));
-}
-
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {
@@ -64,7 +53,14 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
+    const body = parseJsonObject(event.body);
+    if (!body) {
+      return {
+        statusCode: 400,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' })
+      };
+    }
     const slug = String(body.slug || 'kaya').trim().toLowerCase();
     const visitorToken = String(body.visitorToken || '').trim();
     const pin = String(body.pin || '').trim();
@@ -116,14 +112,15 @@ exports.handler = async (event) => {
       `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(visitorToken)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance`
     );
 
-    const card = cards?.[0];
-    if (!card || Number(card.stamps_count || 0) <= 0) {
+    const existingCard = cards?.[0];
+    if (!existingCard || getStampCount(existingCard) <= 0) {
       return {
         statusCode: 422,
         headers: JSON_HEADERS,
         body: JSON.stringify({ error: 'Ləğv ediləcək xal yoxdur.' })
       };
     }
+    const card = normalizeCard(restaurant, existingCard);
 
     const lastTxs = await sbFetch(
       url,
@@ -131,15 +128,28 @@ exports.handler = async (event) => {
       `card_transactions?card_id=eq.${encodeURIComponent(card.id)}&tx_type=eq.stamp&order=created_at.desc&limit=1&select=id,bill_amount`
     );
     const lastTx = lastTxs?.[0] || null;
-    const deductedAmount = Number(lastTx?.bill_amount || 0);
+    if (!lastTx?.id) {
+      return {
+        statusCode: 422,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Geri alınacaq son çəntik əməliyyatı tapılmadı.' })
+      };
+    }
 
-    const goal = Number(restaurant.stamp_goal || 5);
-    const nextStamps = Math.max(0, Number(card.stamps_count || 0) - 1);
-    const nextTotalSpent = nextStamps === 0 ? 0 : roundMoney(Number(card.total_spent || 0) - deductedAmount);
+    const deductedAmount = Number(lastTx.bill_amount);
+    if (!Number.isFinite(deductedAmount) || deductedAmount < 0) {
+      return {
+        statusCode: 422,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Son çəntiyin hesab məbləği etibarsızdır.' })
+      };
+    }
+
+    const goal = getStampGoal(restaurant);
+    const nextStamps = Math.max(0, getStampCount(card) - 1);
+    const nextTotalSpent = nextStamps === 0 ? 0 : Math.max(0, roundMoney(getTotalSpent(card) - deductedAmount));
     const unlocked = nextStamps >= goal;
-    const hasAccruedBonus = String(restaurant.bonus_mode || 'fixed').trim().toLowerCase() === 'percent';
-    const computedBonus = calculateBonusAmount(restaurant, nextTotalSpent);
-    const nextBonusBalance = unlocked || hasAccruedBonus ? computedBonus : 0;
+    const nextBonusBalance = getBonusBalance(restaurant, nextStamps, nextTotalSpent);
 
     const updated = await sbFetch(
       url,
@@ -156,6 +166,7 @@ exports.handler = async (event) => {
         })
       }
     );
+    if (!updated?.[0]) throw new Error('Kart yenilənmədi.');
 
     if (lastTx?.id) {
       await sbFetch(
@@ -166,13 +177,7 @@ exports.handler = async (event) => {
       );
     }
 
-    const updatedCard = updated?.[0] || {
-      ...card,
-      stamps_count: nextStamps,
-      reward_unlocked: unlocked,
-      total_spent: nextTotalSpent,
-      bonus_balance: nextBonusBalance
-    };
+    const updatedCard = normalizeCard(restaurant, updated[0]);
 
     return {
       statusCode: 200,

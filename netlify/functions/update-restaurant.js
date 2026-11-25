@@ -1,4 +1,5 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const { parseJsonObject } = require('../lib/request');
 
 function getSupabaseConfig() {
   const rawUrl = (process.env.SUPABASE_URL || '').trim();
@@ -47,24 +48,48 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
+    const body = parseJsonObject(event.body);
+    if (!body) {
+      return {
+        statusCode: 400,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' })
+      };
+    }
     const slug = String(body.slug || '').trim().toLowerCase();
-    const accessCode = String(body.accessCode || '').trim();
+    const accessCode = String(body.accessCode || body.adminCode || body.admin_code || '').trim();
 
     if (!slug || !accessCode) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Slug və giriş kodu tələb olunur.' }) };
     }
 
-    const stampGoal = Number(body.stamp_goal);
+    const stampGoalValue = String(body.stamp_goal ?? '').trim();
+    const stampGoal = /^\d+$/.test(stampGoalValue) ? Number(stampGoalValue) : NaN;
     const cashierPin = String(body.cashier_pin || '').trim();
-    const bonusMode = String(body.bonus_mode || 'fixed').toLowerCase() === 'percent' ? 'percent' : 'fixed';
+    const bonusMode = String(body.bonus_mode || '').trim().toLowerCase();
 
     if (!Number.isInteger(stampGoal) || stampGoal < 1 || stampGoal > 20) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Çəntik sayı 1-20 arası tam ədəd olmalıdır.' }) };
     }
 
+    if (bonusMode !== 'fixed' && bonusMode !== 'percent') {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Bonus rejimi düzgün seçilməyib.' }) };
+    }
+
     if (!/^\d{4}$/.test(cashierPin)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Kassir PİN kodu 4 rəqəm olmalıdır.' }) };
+    }
+
+    const bonusValueInput = bonusMode === 'percent' ? body.bonus_percent : body.bonus_fixed_amount;
+    const bonusValue = Number(bonusValueInput);
+    if (
+      bonusValueInput === undefined ||
+      bonusValueInput === null ||
+      (typeof bonusValueInput === 'string' && !bonusValueInput.trim()) ||
+      !Number.isFinite(bonusValue) ||
+      bonusValue < 0
+    ) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Bonus dəyərini düzgün daxil edin.' }) };
     }
 
     const { url, key } = getSupabaseConfig();
@@ -95,11 +120,7 @@ exports.handler = async (event) => {
       instagram: String(body.instagram ?? '').trim()
     };
 
-    if (bonusMode === 'percent' && body.bonus_percent !== undefined) {
-      patchPayload.bonus_percent = Number(body.bonus_percent);
-    } else if (bonusMode === 'fixed' && body.bonus_fixed_amount !== undefined) {
-      patchPayload.bonus_fixed_amount = Number(body.bonus_fixed_amount);
-    }
+    patchPayload[bonusMode === 'percent' ? 'bonus_percent' : 'bonus_fixed_amount'] = bonusValue;
 
     const updated = await sbFetch(
       url,
@@ -112,7 +133,10 @@ exports.handler = async (event) => {
       }
     );
 
-    const updatedRow = updated?.[0] || {};
+    const updatedRow = updated?.[0];
+    if (!updatedRow) {
+      return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran ayarları yenilənmədi.' }) };
+    }
     const { admin_code, ...safeUpdated } = updatedRow;
 
     return {
