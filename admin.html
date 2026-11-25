@@ -68,11 +68,40 @@
       gap: 12px;
     }
 
+    .top-brand-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .back-btn {
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--bg-surface);
+      color: var(--blue-light);
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .back-btn:hover {
+      border-color: var(--blue);
+    }
+
     .brand-pill {
       background: var(--badge-bg);
       border: 1.5px solid var(--blue);
       border-radius: 14px;
-      padding: 8px 16px;
+      padding: 8px 10px;
       box-shadow: 0 8px 20px rgba(19, 105, 65, 0.14);
     }
 
@@ -249,9 +278,12 @@
 <body class="light-mode">
   <div class="app">
     <div class="top-bar">
-      <div class="brand-pill">
-        <strong>Yenə gəl</strong>
-        <span>Partner Admin</span>
+      <div class="top-brand-group">
+        <a id="backBtn" class="back-btn" href="index.html" aria-label="Ana səhifəyə qayıt" title="Geri">←</a>
+        <div class="brand-pill">
+          <strong>Yenə gəl</strong>
+          <span>Partner Admin</span>
+        </div>
       </div>
 
       <div class="theme-switch" role="group" aria-label="Tema seçimi">
@@ -368,6 +400,7 @@
       lightThemeBtn?.addEventListener('click', () => applyTheme('light'));
 
       const params = new URLSearchParams(window.location.search);
+      const backBtn = document.getElementById('backBtn');
       const slugInput = document.getElementById('slugInput');
       const accessCodeInput = document.getElementById('accessCodeInput');
       const loginBtn = document.getElementById('loginBtn');
@@ -392,8 +425,13 @@
       const saveBtn = document.getElementById('saveBtn');
       const saveMsg = document.getElementById('saveMsg');
 
+      const initialSlug = (params.get('slug') || 'kaya').trim().toLowerCase();
+      if (backBtn) {
+        backBtn.href = `index.html?slug=${encodeURIComponent(initialSlug)}`;
+      }
+
       if (params.get('slug') && slugInput) {
-        slugInput.value = params.get('slug').trim().toLowerCase();
+        slugInput.value = initialSlug;
       }
 
       let currentSession = { slug: '', accessCode: '' };

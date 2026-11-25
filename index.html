@@ -70,11 +70,40 @@
       gap: 10px;
     }
 
+    .top-brand-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .back-btn {
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--bg-surface);
+      color: var(--blue-light);
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .back-btn:hover {
+      border-color: var(--blue);
+    }
+
     .brand-pill {
       background: var(--badge-bg);
       border: 1.5px solid var(--blue);
       border-radius: 14px;
-      padding: 8px 16px;
+      padding: 8px 10px;
       box-shadow: 0 8px 20px rgba(19, 105, 65, 0.14);
     }
 
@@ -417,9 +446,12 @@
 <body class="light-mode">
   <div class="app">
     <div class="top-bar">
-      <div class="brand-pill">
-        <strong>Yenə gəl</strong>
-        <span>Sadiqlik Kartı</span>
+      <div class="top-brand-group">
+        <button id="backBtn" type="button" class="back-btn" aria-label="Əvvəlki səhifəyə qayıt" title="Geri">←</button>
+        <div class="brand-pill">
+          <strong>Yenə gəl</strong>
+          <span>Sadiqlik Kartı</span>
+        </div>
       </div>
 
       <div class="theme-switch" role="group" aria-label="Tema seçimi">
@@ -492,6 +524,7 @@
     (function () {
       const darkThemeBtn = document.getElementById('darkThemeBtn');
       const lightThemeBtn = document.getElementById('lightThemeBtn');
+      const backBtn = document.getElementById('backBtn');
 
       function applyTheme(mode) {
         const isLight = mode !== 'dark';
@@ -504,6 +537,7 @@
       applyTheme('light');
       darkThemeBtn?.addEventListener('click', () => applyTheme('dark'));
       lightThemeBtn?.addEventListener('click', () => applyTheme('light'));
+      backBtn?.addEventListener('click', () => window.history.back());
 
       const params = new URLSearchParams(window.location.search);
       const slug = (params.get('slug') || 'kaya').trim().toLowerCase();
