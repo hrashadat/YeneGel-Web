@@ -137,7 +137,9 @@ exports.handler = async (event) => {
     const nextStamps = Math.max(0, Number(card.stamps_count || 0) - 1);
     const nextTotalSpent = nextStamps === 0 ? 0 : roundMoney(Number(card.total_spent || 0) - deductedAmount);
     const unlocked = nextStamps >= goal;
-    const nextBonusBalance = unlocked ? calculateBonusAmount(restaurant, nextTotalSpent) : 0;
+    const hasAccruedBonus = String(restaurant.bonus_mode || 'fixed').trim().toLowerCase() === 'percent';
+    const computedBonus = calculateBonusAmount(restaurant, nextTotalSpent);
+    const nextBonusBalance = unlocked || hasAccruedBonus ? computedBonus : 0;
 
     const updated = await sbFetch(
       url,

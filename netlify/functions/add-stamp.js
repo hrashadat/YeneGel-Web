@@ -129,12 +129,14 @@ exports.handler = async (event) => {
     const goal = Number(restaurant.stamp_goal || 5);
     let currentCard = existingCards?.[0] || null;
     const prevSpent = Number(currentCard?.total_spent || 0);
+    const prevBonusBalance = Number(currentCard?.bonus_balance || 0);
     const nextTotalSpent = roundMoney(prevSpent + billAmount);
 
     const nextStamps = Math.min((currentCard?.stamps_count || 0) + 1, goal);
     const unlocked = nextStamps >= goal;
     const computedBonus = calculateBonusAmount(restaurant, nextTotalSpent);
-    const nextBonusBalance = unlocked ? computedBonus : 0;
+    const hasAccruedBonus = String(restaurant.bonus_mode || 'fixed').trim().toLowerCase() === 'percent';
+    const nextBonusBalance = unlocked || hasAccruedBonus ? computedBonus : 0;
 
     if (currentCard) {
       const updated = await sbFetch(
@@ -196,7 +198,7 @@ exports.handler = async (event) => {
           visitor_token: visitorToken,
           tx_type: 'stamp',
           bill_amount: billAmount,
-          bonus_delta: unlocked ? nextBonusBalance : 0
+          bonus_delta: nextBonusBalance - prevBonusBalance
         })
       });
     }
