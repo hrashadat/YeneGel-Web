@@ -896,13 +896,13 @@
         if (cardPollTimer !== null) return;
         cardPollTimer = window.setInterval(() => {
           if (customer && document.visibilityState === 'visible') {
-            loadCustomerCard().catch(() => {
+            loadCustomerCard({ withLoading: false }).catch(() => {
               mainMsg.textContent = 'Kart məlumatı yenilənə bilmədi. Yenidən yoxlanılır...';
               mainMsg.className = 'msg err';
               mainMsg.dataset.refreshError = 'true';
             });
           }
-        }, 5000);
+        }, 3000);
       }
 
       function getLegacyVisitorToken() {
@@ -950,7 +950,7 @@
             if (cardRefreshQueued && customer) {
               cardRefreshQueued = false;
               window.setTimeout(() => {
-                loadCustomerCard().catch(error => {
+                loadCustomerCard({ withLoading: false }).catch(error => {
                   mainMsg.textContent = error.message || 'Müştəri kartı yenilənmədi.';
                   mainMsg.className = 'msg err';
                   mainMsg.dataset.refreshError = 'true';
@@ -974,7 +974,7 @@
             cardRefreshQueued = true;
             return;
           }
-          loadCustomerCard().catch(error => {
+          loadCustomerCard({ withLoading: false }).catch(error => {
             mainMsg.textContent = error.message || 'Müştəri kartı yenilənmədi.';
             mainMsg.className = 'msg err';
             mainMsg.dataset.refreshError = 'true';
@@ -995,7 +995,7 @@
       });
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && customer) {
-          loadCustomerCard().catch(error => {
+          loadCustomerCard({ withLoading: false }).catch(error => {
             mainMsg.textContent = error.message || 'Müştəri kartı yenilənmədi.';
             mainMsg.className = 'msg err';
             mainMsg.dataset.refreshError = 'true';
@@ -1116,7 +1116,7 @@
       });
       window.addEventListener('pageshow', () => {
         if (customer) {
-          loadCustomerCard().catch(error => {
+          loadCustomerCard({ withLoading: false }).catch(error => {
             showMessage(mainMsg, error.message, true);
             mainMsg.dataset.refreshError = 'true';
           });

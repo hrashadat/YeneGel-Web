@@ -96,23 +96,25 @@
     .toast {
       position: fixed;
       left: 50%;
-      bottom: 24px;
+      top: 50%;
       z-index: 3100;
+      min-width: min(360px, calc(100vw - 32px));
       max-width: calc(100vw - 32px);
-      padding: 12px 18px;
-      border: 1px solid var(--border);
-      border-radius: 13px;
-      background: var(--accent);
-      color: var(--accent-text);
-      font-weight: 800;
+      padding: 22px 30px;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      border-radius: 18px;
+      background: #167a45;
+      color: #fff;
+      font-size: clamp(22px, 5vw, 28px);
+      font-weight: 850;
       text-align: center;
-      box-shadow: var(--shadow);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.32);
       opacity: 0;
       pointer-events: none;
-      transform: translate(-50%, 10px);
-      transition: opacity 160ms ease, transform 160ms ease;
+      transform: translate(-50%, calc(-50% + 12px)) scale(0.96);
+      transition: opacity 180ms ease, transform 180ms ease;
     }
-    .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+    .toast.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     .msg { min-height: 20px; margin-top: 10px; font-size: 13px; font-weight: 700; }
     .msg:empty { display: none; }
     .err { color: var(--danger); }
