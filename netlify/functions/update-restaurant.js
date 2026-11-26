@@ -58,9 +58,10 @@ exports.handler = async (event) => {
     }
     const slug = String(body.slug || '').trim().toLowerCase();
     const accessCode = String(body.accessCode || body.adminCode || body.admin_code || '').trim();
+    const currentPin = String(body.current_pin || '').trim();
 
-    if (!slug || !accessCode) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Slug və giriş kodu tələb olunur.' }) };
+    if (!slug || !accessCode || !/^\d{4}$/.test(currentPin)) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Slug, admin kodu və cari kassir PİN kodu tələb olunur.' }) };
     }
 
     const stampGoalValue = String(body.stamp_goal ?? '').trim();
@@ -91,12 +92,15 @@ exports.handler = async (event) => {
     ) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Bonus dəyərini düzgün daxil edin.' }) };
     }
+    if (body.menu_json !== undefined && (!body.menu_json || typeof body.menu_json !== 'object')) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Menyu JSON formatında obyekt və ya siyahı olmalıdır.' }) };
+    }
 
     const { url, key } = getSupabaseConfig();
     const rows = await sbFetch(
       url,
       key,
-      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,slug,admin_code,bonus_fixed_amount,bonus_percent`
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,slug,admin_code,pin_code,bonus_fixed_amount,bonus_percent`
     );
 
     const existing = rows?.[0];
@@ -106,6 +110,9 @@ exports.handler = async (event) => {
 
     if (!existing.admin_code || String(existing.admin_code).trim() !== accessCode) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Xüsusi giriş kodu yanlışdır.' }) };
+    }
+    if (String(existing.pin_code || '').trim() !== currentPin) {
+      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Kassir PİN kodu yanlışdır.' }) };
     }
 
     const patchPayload = {
@@ -119,6 +126,7 @@ exports.handler = async (event) => {
       phone: String(body.phone ?? '').trim(),
       instagram: String(body.instagram ?? '').trim()
     };
+    if (body.menu_json !== undefined) patchPayload.menu_json = body.menu_json;
 
     patchPayload[bonusMode === 'percent' ? 'bonus_percent' : 'bonus_fixed_amount'] = bonusValue;
 

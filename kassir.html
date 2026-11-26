@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yenə gəl — Kassir və Admin</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f7f6f2;
+      --surface: #fff;
+      --soft: #f7f6f2;
+      --border: #e5e2dc;
+      --text: #181816;
+      --muted: #786b59;
+      --accent: #181816;
+      --accent-text: #fff;
+      --danger: #a33d32;
+      --success: #3d6b4e;
+      --shadow: 0 10px 30px rgba(24, 24, 22, .05);
+    }
+    body:not(.light-mode) {
+      color-scheme: dark;
+      --page: #181816;
+      --surface: #242320;
+      --soft: #302e2a;
+      --border: #49453f;
+      --text: #f7f5f0;
+      --muted: #c0b6a8;
+      --accent: #f7f5f0;
+      --accent-text: #181816;
+      --shadow: 0 12px 32px rgba(0, 0, 0, .2);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+      background: var(--page);
+      color: var(--text);
+      font: 15px system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    button, input, textarea { font: inherit; }
+    .app { width: min(100%, 760px); margin: 0 auto; display: grid; gap: 16px; }
+    .topbar, .top-actions, .tabs, .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .topbar { min-height: 48px; }
+    .brand strong { display: block; font-size: 18px; }
+    .brand span { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: 1.6px; }
+    .card { padding: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); }
+    .title { margin: 0 0 7px; font-size: 18px; font-weight: 800; }
+    .sub { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .field { margin-bottom: 14px; }
+    label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .input { width: 100%; padding: 12px 13px; border: 1px solid var(--border); border-radius: 11px; outline: none; background: var(--soft); color: var(--text); }
+    .input:focus { border-color: var(--muted); }
+    textarea.input { min-height: 130px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    .btn { padding: 11px 15px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); color: var(--text); font-weight: 750; cursor: pointer; }
+    .btn-primary { width: 100%; border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .tabs { justify-content: flex-start; padding: 4px; border: 1px solid var(--border); border-radius: 13px; background: var(--surface); }
+    .tab { flex: 1; padding: 10px 12px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 750; cursor: pointer; }
+    .tab.active { background: var(--accent); color: var(--accent-text); }
+    .hidden { display: none !important; }
+    .msg { min-height: 20px; margin-top: 10px; font-size: 13px; font-weight: 700; }
+    .msg:empty { display: none; }
+    .err { color: var(--danger); }
+    .ok { color: var(--success); }
+    .customer { margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--soft); }
+    .customer h3 { margin: 0 0 5px; font-size: 17px; }
+    .customer p { margin: 4px 0; color: var(--muted); }
+    .stamp-count { margin: 14px 0; font-size: 26px; font-weight: 850; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    #reader { width: 100%; overflow: hidden; border-radius: 14px; }
+    #reader video { border-radius: 12px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th { color: var(--muted); font-size: 11px; }
+    @media (max-width: 520px) {
+      body { padding: 16px 12px 34px; }
+      .card { padding: 17px; }
+      .topbar { align-items: flex-start; }
+      .actions { grid-template-columns: 1fr; }
+      .tabs { gap: 4px; }
+      .tab { padding: 9px 5px; font-size: 12px; }
+    }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--muted); outline-offset: 3px; }
+  </style>
+</head>
+<body class="light-mode">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <strong>Yenə gəl</strong>
+        <span>KASSİR VƏ ADMIN</span>
+      </div>
+      <div class="top-actions">
+        <button id="themeBtn" class="btn" type="button">Dark mode</button>
+        <a class="btn" href="index.html">Müştəri səhifəsi</a>
+      </div>
+    </header>
+
+    <section id="pinScreen" class="card">
+      <h1 class="title">Kassir panelinə giriş</h1>
+      <p class="sub">Davam etmək üçün restoranın 4 rəqəmli kassir PİN kodunu daxil edin.</p>
+      <form id="pinForm">
+        <div class="field">
+          <label for="pinInput">Kassir PİN kodu</label>
+          <input id="pinInput" class="input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" required />
+        </div>
+        <button id="pinBtn" class="btn btn-primary" type="submit">Daxil ol</button>
+      </form>
+      <div id="pinMsg" class="msg err" role="status"></div>
+    </section>
+
+    <main id="workspace" class="hidden">
+      <nav class="tabs" aria-label="Panel bölmələri">
+        <button class="tab active" data-panel="cashierPanel" type="button">Kassir skaneri</button>
+        <button class="tab" data-panel="adminPanel" type="button">Admin paneli</button>
+      </nav>
+
+      <section id="cashierPanel" class="card">
+        <h1 class="title">Kassir skaner paneli</h1>
+        <p class="sub">Müştərinin QR kodunu kameraya göstərin. Kamera icazəsi üçün sayt HTTPS üzərindən açılmalıdır.</p>
+        <button id="startScannerBtn" class="btn btn-primary" type="button">Kameranı başladın</button>
+        <div id="scannerMsg" class="msg" role="status"></div>
+        <div id="reader" class="hidden"></div>
+        <div id="scannedCustomer" class="customer hidden">
+          <h3 id="customerName"></h3>
+          <p id="customerPhone"></p>
+          <p id="customerId"></p>
+          <div id="stampCount" class="stamp-count"></div>
+          <div class="field">
+            <label for="amountInput">Yeməyin məbləği (AZN)</label>
+            <input id="amountInput" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="məs: 25.00" />
+          </div>
+          <div class="actions">
+            <button id="addStampBtn" class="btn btn-primary" type="button">+ Möhür əlavə et</button>
+            <button id="removeStampBtn" class="btn" type="button">− Möhür sil</button>
+          </div>
+          <button id="scanNextBtn" class="btn" type="button" style="width:100%;margin-top:10px">Başqa müştərini skan et</button>
+          <div id="operationMsg" class="msg" role="status"></div>
+        </div>
+      </section>
+
+      <section id="adminPanel" class="card hidden">
+        <div id="adminLogin">
+          <h1 class="title">Admin panelinə giriş</h1>
+          <p class="sub">Restoranın admin kodu ilə menyu, tənzimləmələr və müştəriləri idarə edin.</p>
+          <form id="adminLoginForm">
+            <div class="field">
+              <label for="adminCodeInput">Admin giriş kodu</label>
+              <input id="adminCodeInput" class="input" type="password" autocomplete="current-password" required />
+            </div>
+            <button id="adminLoginBtn" class="btn btn-primary" type="submit">Admin panelini aç</button>
+          </form>
+          <div id="adminLoginMsg" class="msg err" role="status"></div>
+        </div>
+        <div id="adminContent" class="hidden">
+          <div class="panel-head">
+            <div>
+              <h1 id="adminRestName" class="title">Restoran ayarları</h1>
+              <p id="adminSlug" class="sub"></p>
+            </div>
+            <button id="adminLogoutBtn" class="btn" type="button">Admin çıxışı</button>
+          </div>
+          <form id="settingsForm">
+            <div class="field">
+              <label for="stampGoalInput">Möhür sayı (hədəf, 1–20)</label>
+              <input id="stampGoalInput" class="input" type="number" min="1" max="20" required />
+            </div>
+            <div class="field">
+              <label for="cashierPinInput">Kassir PİN kodu (4 rəqəm)</label>
+              <input id="cashierPinInput" class="input" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required />
+            </div>
+            <div class="field">
+              <label for="bonusModeInput">Bonus rejimi</label>
+              <select id="bonusModeInput" class="input">
+                <option value="fixed">Sabit məbləğ (AZN)</option>
+                <option value="percent">Faiz (%)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label id="bonusValueLabel" for="bonusValueInput">Bonus məbləği (AZN)</label>
+              <input id="bonusValueInput" class="input" type="number" min="0" step="0.01" required />
+            </div>
+            <div class="field">
+              <label for="rewardTextInput">Bonus banner mətni</label>
+              <input id="rewardTextInput" class="input" type="text" maxlength="45" />
+            </div>
+            <div class="field">
+              <label for="restaurantNameInput">Restoran adı</label>
+              <input id="restaurantNameInput" class="input" type="text" />
+            </div>
+            <div class="field">
+              <label for="aboutInput">Restoran haqqında</label>
+              <textarea id="aboutInput" class="input"></textarea>
+            </div>
+            <div class="field">
+              <label for="addressInput">Ünvan</label>
+              <input id="addressInput" class="input" type="text" />
+            </div>
+            <div class="field">
+              <label for="restaurantPhoneInput">Əlaqə nömrəsi</label>
+              <input id="restaurantPhoneInput" class="input" type="text" />
+            </div>
+            <div class="field">
+              <label for="instagramInput">Instagram</label>
+              <input id="instagramInput" class="input" type="text" />
+            </div>
+            <div class="field">
+              <label for="menuInput">Rəqəmsal menyu (JSON)</label>
+              <textarea id="menuInput" class="input" spellcheck="false" placeholder='[{"name":"Yemək","price":12}]'></textarea>
+            </div>
+            <button id="saveSettingsBtn" class="btn btn-primary" type="submit">Dəyişiklikləri yadda saxla</button>
+          </form>
+          <div id="settingsMsg" class="msg" role="status"></div>
+
+          <hr style="border:0;border-top:1px solid var(--border);margin:24px 0" />
+          <h2 class="title">Müştəri siyahısı</h2>
+          <p class="sub">Son 500 qeydiyyatdan keçmiş müştəri və onların cari kart balansı.</p>
+          <div id="customerListMsg" class="msg"></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Ad soyad</th><th>Telefon</th><th>Möhür</th><th>Bonus</th><th>Qeydiyyat</th></tr></thead>
+              <tbody id="customerRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    (function () {
+      const slug = (new URLSearchParams(window.location.search).get('slug') || 'kaya').trim().toLowerCase();
+      const pinScreen = document.getElementById('pinScreen');
+      const workspace = document.getElementById('workspace');
+      const pinForm = document.getElementById('pinForm');
+      const pinInput = document.getElementById('pinInput');
+      const pinBtn = document.getElementById('pinBtn');
+      const pinMsg = document.getElementById('pinMsg');
+      let cashierPin = '';
+      let restaurant = null;
+      let selectedCustomer = null;
+      let scanner = null;
+      let adminCode = '';
+
+      document.getElementById('themeBtn').addEventListener('click', event => {
+        const isLight = document.body.classList.toggle('light-mode');
+        event.currentTarget.textContent = isLight ? 'Dark mode' : 'Light mode';
+      });
+
+      async function requestJson(url, options) {
+        const response = await fetch(url, options);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'Sorğu uğursuz oldu.');
+        return data;
+      }
+
+      function showMessage(element, message, error) {
+        element.textContent = message;
+        element.className = `msg${message ? (error ? ' err' : ' ok') : ''}`;
+      }
+
+      pinInput.addEventListener('input', () => { pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4); });
+      pinForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        showMessage(pinMsg, '', false);
+        pinBtn.disabled = true;
+        try {
+          const enteredPin = pinInput.value.trim();
+          const data = await requestJson('/.netlify/functions/cashier-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug, pin: enteredPin })
+          });
+          cashierPin = enteredPin;
+          restaurant = data.restaurant;
+          pinScreen.classList.add('hidden');
+          workspace.classList.remove('hidden');
+          document.getElementById('adminRestName').textContent = restaurant.name || 'Restoran ayarları';
+          document.getElementById('adminSlug').textContent = `Restoran kodu: ${slug}`;
+        } catch (error) {
+          showMessage(pinMsg, error.message || 'Serverlə əlaqə alınmadı.', true);
+        } finally {
+          pinBtn.disabled = false;
+        }
+      });
+
+      document.querySelectorAll('.tab').forEach(button => {
+        button.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button));
+          document.getElementById('cashierPanel').classList.toggle('hidden', button.dataset.panel !== 'cashierPanel');
+          document.getElementById('adminPanel').classList.toggle('hidden', button.dataset.panel !== 'adminPanel');
+        });
+      });
+
+      async function stopScanner() {
+        if (scanner && scanner.isScanning) {
+          await scanner.stop();
+          scanner.clear();
+        }
+        scanner = null;
+        document.getElementById('reader').classList.add('hidden');
+        document.getElementById('startScannerBtn').classList.remove('hidden');
+      }
+
+      async function lookupCustomer(customerId) {
+        showMessage(document.getElementById('scannerMsg'), 'Müştəri kartı yoxlanılır...', false);
+        const data = await requestJson('/.netlify/functions/cashier-customer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug, pin: cashierPin, customer_id: customerId })
+        });
+        selectedCustomer = data.customer;
+        renderScannedCustomer(data.card);
+        showMessage(document.getElementById('scannerMsg'), '', false);
+      }
+
+      function renderScannedCustomer(card) {
+        document.getElementById('customerName').textContent = `${selectedCustomer.first_name} ${selectedCustomer.last_name}`;
+        document.getElementById('customerPhone').textContent = `Telefon: ${selectedCustomer.phone}`;
+        document.getElementById('customerId').textContent = `ID: ${selectedCustomer.id}`;
+        document.getElementById('stampCount').textContent =
+          `${Number(card.stamps_count || 0)} / ${Number(restaurant.stamp_goal || 5)} möhür`;
+        document.getElementById('scannedCustomer').classList.remove('hidden');
+        document.getElementById('amountInput').value = '';
+        showMessage(document.getElementById('operationMsg'), '', false);
+      }
+
+      document.getElementById('startScannerBtn').addEventListener('click', async () => {
+        const message = document.getElementById('scannerMsg');
+        if (typeof Html5Qrcode !== 'function') {
+          showMessage(message, 'QR skaner kitabxanası yüklənmədi. İnternet bağlantısını yoxlayın.', true);
+          return;
+        }
+        try {
+          document.getElementById('scannedCustomer').classList.add('hidden');
+          document.getElementById('startScannerBtn').classList.add('hidden');
+          document.getElementById('reader').classList.remove('hidden');
+          scanner = new Html5Qrcode('reader');
+          await scanner.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: { width: 240, height: 240 } },
+            async decodedText => {
+              const id = decodedText.trim();
+              if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+                showMessage(message, 'Bu QR kod Yenə gəl müştəri kartına aid deyil.', true);
+                return;
+              }
+              try {
+                await stopScanner();
+                await lookupCustomer(id);
+              } catch (error) {
+                showMessage(message, error.message || 'Müştəri kartı tapılmadı.', true);
+                document.getElementById('startScannerBtn').classList.remove('hidden');
+              }
+            },
+            () => {}
+          );
+        } catch (error) {
+          await stopScanner().catch(() => {});
+          showMessage(message, error.message || 'Kameranı başlatmaq mümkün olmadı.', true);
+        }
+      });
+
+      async function submitStamp(stampDelta) {
+        if (!selectedCustomer) return;
+        const amount = Number(document.getElementById('amountInput').value);
+        const message = document.getElementById('operationMsg');
+        if (!Number.isFinite(amount) || amount <= 0) {
+          showMessage(message, 'Yeməyin məbləğini düzgün daxil edin.', true);
+          return;
+        }
+        const buttons = [document.getElementById('addStampBtn'), document.getElementById('removeStampBtn')];
+        buttons.forEach(button => { button.disabled = true; });
+        showMessage(message, '', false);
+        try {
+          const data = await requestJson('/.netlify/functions/cashier-stamp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              slug,
+              pin: cashierPin,
+              customer_id: selectedCustomer.id,
+              amount,
+              stamp_delta: stampDelta
+            })
+          });
+          renderScannedCustomer(data.card);
+          showMessage(message, stampDelta > 0 ? 'Möhür əlavə edildi və tarixçəyə yazıldı.' : 'Möhür silindi və tarixçəyə yazıldı.', false);
+        } catch (error) {
+          showMessage(message, error.message || 'Əməliyyat tamamlanmadı.', true);
+        } finally {
+          buttons.forEach(button => { button.disabled = false; });
+        }
+      }
+      document.getElementById('addStampBtn').addEventListener('click', () => submitStamp(1));
+      document.getElementById('removeStampBtn').addEventListener('click', () => submitStamp(-1));
+      document.getElementById('scanNextBtn').addEventListener('click', () => {
+        selectedCustomer = null;
+        document.getElementById('scannedCustomer').classList.add('hidden');
+        showMessage(document.getElementById('scannerMsg'), '', false);
+      });
+
+      function fillSettings(data) {
+        document.getElementById('stampGoalInput').value = String(data.stamp_goal || 5);
+        document.getElementById('cashierPinInput').value = data.pin_code || '';
+        document.getElementById('bonusModeInput').value = data.bonus_mode === 'percent' ? 'percent' : 'fixed';
+        document.getElementById('bonusValueInput').value = document.getElementById('bonusModeInput').value === 'percent'
+          ? Number(data.bonus_percent ?? 10) : Number(data.bonus_fixed_amount ?? 10);
+        document.getElementById('bonusValueLabel').textContent = document.getElementById('bonusModeInput').value === 'percent'
+          ? 'Bonus faizi (%)' : 'Bonus məbləği (AZN)';
+        document.getElementById('rewardTextInput').value = data.reward_text || '';
+        document.getElementById('restaurantNameInput').value = data.name || '';
+        document.getElementById('aboutInput').value = data.about || '';
+        document.getElementById('addressInput').value = data.address || '';
+        document.getElementById('restaurantPhoneInput').value = data.phone || '';
+        document.getElementById('instagramInput').value = data.instagram || '';
+        document.getElementById('menuInput').value = JSON.stringify(data.menu_json || [], null, 2);
+      }
+      document.getElementById('bonusModeInput').addEventListener('change', event => {
+        document.getElementById('bonusValueLabel').textContent = event.target.value === 'percent'
+          ? 'Bonus faizi (%)' : 'Bonus məbləği (AZN)';
+      });
+
+      async function loadCustomers() {
+        const message = document.getElementById('customerListMsg');
+        showMessage(message, 'Müştəri siyahısı yüklənir...', false);
+        const data = await requestJson('/.netlify/functions/admin-customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug, accessCode: adminCode, pin: cashierPin })
+        });
+        const rows = document.getElementById('customerRows');
+        rows.replaceChildren();
+        data.customers.forEach(customer => {
+          const row = document.createElement('tr');
+          const values = [
+            `${customer.first_name} ${customer.last_name}`,
+            customer.phone,
+            String(customer.card.stamps_count || 0),
+            `${Number(customer.card.bonus_balance || 0).toFixed(2)} AZN`,
+            customer.created_at ? new Date(customer.created_at).toLocaleDateString('az-AZ') : '—'
+          ];
+          values.forEach(value => {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.appendChild(cell);
+          });
+          rows.appendChild(row);
+        });
+        showMessage(message, data.customers.length ? `${data.customers.length} müştəri göstərilir.` : 'Hələ müştəri yoxdur.', false);
+      }
+
+      document.getElementById('adminLoginForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const loginButton = document.getElementById('adminLoginBtn');
+        const message = document.getElementById('adminLoginMsg');
+        adminCode = document.getElementById('adminCodeInput').value.trim();
+        loginButton.disabled = true;
+        showMessage(message, '', false);
+        try {
+          const data = await requestJson('/.netlify/functions/admin-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug, accessCode: adminCode, pin: cashierPin })
+          });
+          restaurant = { ...restaurant, ...data.restaurant };
+          fillSettings(restaurant);
+          document.getElementById('adminLogin').classList.add('hidden');
+          document.getElementById('adminContent').classList.remove('hidden');
+          await loadCustomers();
+        } catch (error) {
+          showMessage(message, error.message || 'Admin panelinə giriş alınmadı.', true);
+        } finally {
+          loginButton.disabled = false;
+        }
+      });
+
+      document.getElementById('adminLogoutBtn').addEventListener('click', () => {
+        adminCode = '';
+        document.getElementById('adminCodeInput').value = '';
+        document.getElementById('adminContent').classList.add('hidden');
+        document.getElementById('adminLogin').classList.remove('hidden');
+      });
+
+      document.getElementById('settingsForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = document.getElementById('saveSettingsBtn');
+        const message = document.getElementById('settingsMsg');
+        let menu;
+        try {
+          menu = JSON.parse(document.getElementById('menuInput').value || '[]');
+          if (!menu || typeof menu !== 'object') throw new Error('Menyu JSON obyekt və ya siyahı olmalıdır.');
+        } catch (error) {
+          showMessage(message, `Menyu JSON xətası: ${error.message}`, true);
+          return;
+        }
+        const bonusMode = document.getElementById('bonusModeInput').value;
+        const bonusValue = Number(document.getElementById('bonusValueInput').value);
+        const payload = {
+          slug,
+          accessCode: adminCode,
+          current_pin: cashierPin,
+          stamp_goal: Number(document.getElementById('stampGoalInput').value),
+          cashier_pin: document.getElementById('cashierPinInput').value.trim(),
+          bonus_mode: bonusMode,
+          bonus_fixed_amount: bonusMode === 'fixed' ? bonusValue : undefined,
+          bonus_percent: bonusMode === 'percent' ? bonusValue : undefined,
+          reward_text: document.getElementById('rewardTextInput').value.trim(),
+          name: document.getElementById('restaurantNameInput').value.trim(),
+          about: document.getElementById('aboutInput').value.trim(),
+          address: document.getElementById('addressInput').value.trim(),
+          phone: document.getElementById('restaurantPhoneInput').value.trim(),
+          instagram: document.getElementById('instagramInput').value.trim(),
+          menu_json: menu
+        };
+        button.disabled = true;
+        showMessage(message, '', false);
+        try {
+          const data = await requestJson('/.netlify/functions/update-restaurant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          restaurant = { ...restaurant, ...data.restaurant };
+          cashierPin = payload.cashier_pin;
+          fillSettings(restaurant);
+          showMessage(message, 'Dəyişikliklər yadda saxlanıldı.', false);
+        } catch (error) {
+          showMessage(message, error.message || 'Dəyişiklikləri yadda saxlamaq alınmadı.', true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      window.addEventListener('pagehide', () => {
+        if (scanner && scanner.isScanning) scanner.stop();
+      });
+    })();
+  </script>
+</body>
+</html>

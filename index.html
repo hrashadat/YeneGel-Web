@@ -505,6 +505,8 @@
       .stat-box { padding: 11px 8px; }
     }
 
+    .auth-modes { width: 100%; margin-bottom: 18px; }
+    .auth-mode-btn { flex: 1; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -513,16 +515,50 @@
     <div class="top-bar">
       <div class="brand-pill">
         <strong>Yenə gəl</strong>
-        <span>SADİQLİK KARTI</span>
+        <span>MÜŞTƏRİ KARTI</span>
       </div>
-
       <div class="theme-switch" role="group" aria-label="Tema seçimi">
         <button id="lightThemeBtn" type="button" class="theme-btn active">Light</button>
         <button id="darkThemeBtn" type="button" class="theme-btn">Dark</button>
       </div>
     </div>
 
-    <div class="card">
+    <section id="authCard" class="card">
+      <div class="about-title">Müştəri hesabı</div>
+      <p class="about-desc">Davam etmək üçün giriş edin və ya yeni hesab yaradın.</p>
+      <div class="theme-switch auth-modes" role="tablist" aria-label="Giriş və qeydiyyat">
+        <button id="loginModeBtn" type="button" class="theme-btn auth-mode-btn">Giriş</button>
+        <button id="registerModeBtn" type="button" class="theme-btn auth-mode-btn active">Qeydiyyat</button>
+      </div>
+      <form id="loginForm" class="hidden">
+        <div class="field">
+          <label for="loginPhoneInput">Telefon nömrəsi</label>
+          <input id="loginPhoneInput" class="input" type="tel" inputmode="tel" autocomplete="tel" placeholder="+994..." required />
+        </div>
+        <button id="loginBtn" type="submit" class="btn-primary">Giriş et</button>
+      </form>
+      <form id="registrationForm">
+        <div class="field">
+          <label for="firstNameInput">Ad</label>
+          <input id="firstNameInput" class="input" type="text" maxlength="80" autocomplete="given-name" required />
+        </div>
+        <div class="field">
+          <label for="lastNameInput">Soyad</label>
+          <input id="lastNameInput" class="input" type="text" maxlength="80" autocomplete="family-name" required />
+        </div>
+        <div class="field">
+          <label for="phoneInput">Telefon nömrəsi</label>
+          <input id="phoneInput" class="input" type="tel" inputmode="tel" autocomplete="tel" placeholder="+994..." required />
+        </div>
+        <button id="registerBtn" type="submit" class="btn-primary">Qeydiyyatdan keç</button>
+      </form>
+      <div id="authMsg" class="msg" role="status"></div>
+    </section>
+
+    <main id="customerCard" class="card hidden">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button id="logoutBtn" type="button" class="btn-secondary">Çıxış et</button>
+      </div>
       <div class="loyalty-card-top">
         <div class="merchant-heading">
           <div id="restName" class="rest-name">Yüklənir...</div>
@@ -531,7 +567,6 @@
         <div id="stampsGrid" class="stamps-grid"></div>
         <div id="progressText" class="progress-text">0 / 5 möhür</div>
       </div>
-
       <div class="stats-row">
         <div class="stat-box">
           <small>Toplam hesab</small>
@@ -542,293 +577,224 @@
           <strong id="bonusBalanceText">0.00 AZN</strong>
         </div>
       </div>
-
-      <div class="actions">
-        <button id="openStampBtn" type="button" class="btn-primary">Möhür əlavə et (Kassir)</button>
-        <button id="redeemBtn" type="button" class="btn-secondary btn-redeem hidden">Bonusu istifadə et</button>
-        <button id="undoBtn" type="button" class="btn-danger-ghost">Son möhürü geri al</button>
+      <div class="about-card" style="box-shadow:none;padding:14px 0 0;border:0;text-align:center">
+        <div class="about-title">Şəxsi QR kodunuz</div>
+        <div id="customerName" class="about-desc"></div>
+        <div id="customerQr" style="display:inline-block;background:#fff;padding:10px;border-radius:12px;min-width:180px;min-height:180px"></div>
+        <div id="customerId" class="about-desc" style="margin-top:8px;overflow-wrap:anywhere"></div>
       </div>
+      <div id="mainMsg" class="msg" role="status"></div>
+    </main>
 
-      <div id="mainMsg" class="msg"></div>
-    </div>
-
-    <div id="cashierPanel" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="cashierTitle">
-      <div class="modal-box">
-        <div id="cashierTitle" class="modal-title">Kassir Təsdiqi</div>
-        <div id="amountFieldWrap" class="field">
-          <label for="billAmountInput">Hesab məbləği (AZN)</label>
-          <input id="billAmountInput" class="input" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" autocomplete="off" placeholder="məs: 25,00" />
-        </div>
-        <div class="field">
-          <label for="pinInput">Kassir PİN kodu (4 rəqəm)</label>
-          <input id="pinInput" class="input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="••••" />
-        </div>
-        <div class="actions">
-          <button id="confirmCashierBtn" type="button" class="btn-primary">Təsdiqlə</button>
-          <button id="cancelCashierBtn" type="button" class="btn-danger-ghost">Bağla</button>
-        </div>
-        <div id="cashierMsg" class="msg err"></div>
-      </div>
-    </div>
-
-    <div id="aboutBox" class="about-card">
+    <section id="aboutBox" class="about-card hidden">
       <div class="about-title">Məkan haqqında</div>
       <div id="aboutText" class="about-desc"></div>
       <div id="aboutMeta" class="about-meta"></div>
-    </div>
-
+    </section>
     <div class="admin-footer-wrap">
-      <a id="adminPanelBtn" class="admin-panel-btn" href="/admin.html?slug=kaya">Partner Admin Paneli</a>
+      <a id="cashierLink" class="admin-panel-btn" href="/kassir.html">Kassir / Admin paneli</a>
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     (function () {
-      const darkThemeBtn = document.getElementById('darkThemeBtn');
-      const lightThemeBtn = document.getElementById('lightThemeBtn');
-
-      function applyTheme(mode) {
-        const isLight = mode !== 'dark';
-        document.body.classList.toggle('light-mode', isLight);
-        darkThemeBtn?.classList.toggle('active', !isLight);
-        lightThemeBtn?.classList.toggle('active', isLight);
-      }
-
-      try { localStorage.removeItem('yenegel_theme_mode'); } catch {}
-      applyTheme('light');
-      darkThemeBtn?.addEventListener('click', () => applyTheme('dark'));
-      lightThemeBtn?.addEventListener('click', () => applyTheme('light'));
-
       const params = new URLSearchParams(window.location.search);
       const slug = (params.get('slug') || 'kaya').trim().toLowerCase();
+      const localKey = `yenegel_customer_${slug}`;
+      const authCard = document.getElementById('authCard');
+      const customerCard = document.getElementById('customerCard');
+      const loginForm = document.getElementById('loginForm');
+      const registrationForm = document.getElementById('registrationForm');
+      const loginBtn = document.getElementById('loginBtn');
+      const registerBtn = document.getElementById('registerBtn');
+      const authMsg = document.getElementById('authMsg');
+      const mainMsg = document.getElementById('mainMsg');
+      const customerQr = document.getElementById('customerQr');
+      let customer = null;
 
-      const adminPanelBtn = document.getElementById('adminPanelBtn');
-      if (adminPanelBtn) {
-        adminPanelBtn.href = `/admin.html?slug=${encodeURIComponent(slug)}`;
+      const applyTheme = mode => {
+        const isLight = mode !== 'dark';
+        document.body.classList.toggle('light-mode', isLight);
+        document.getElementById('darkThemeBtn').classList.toggle('active', !isLight);
+        document.getElementById('lightThemeBtn').classList.toggle('active', isLight);
+      };
+      document.getElementById('darkThemeBtn').addEventListener('click', () => applyTheme('dark'));
+      document.getElementById('lightThemeBtn').addEventListener('click', () => applyTheme('light'));
+      document.getElementById('cashierLink').href = `/kassir.html?slug=${encodeURIComponent(slug)}`;
+
+      function showMessage(element, message, isError) {
+        element.textContent = message;
+        element.className = `msg ${isError ? 'err' : 'ok'}`;
       }
 
-      const tokenKey = `yenegel_visitor_${slug}`;
-      let visitorToken = '';
-      try {
-        visitorToken = localStorage.getItem(tokenKey) || '';
-        if (!visitorToken) {
-          visitorToken = 'v_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36);
-          localStorage.setItem(tokenKey, visitorToken);
-        }
-      } catch {
-        visitorToken = 'v_temp_' + slug;
+      function setAuthMode(mode) {
+        const isLogin = mode === 'login';
+        loginForm.classList.toggle('hidden', !isLogin);
+        registrationForm.classList.toggle('hidden', isLogin);
+        document.getElementById('loginModeBtn').classList.toggle('active', isLogin);
+        document.getElementById('registerModeBtn').classList.toggle('active', !isLogin);
+        authMsg.textContent = '';
       }
 
-      const restNameEl = document.getElementById('restName');
-      const rewardBannerEl = document.getElementById('rewardBanner');
-      const stampsGridEl = document.getElementById('stampsGrid');
-      const progressTextEl = document.getElementById('progressText');
-      const totalSpentTextEl = document.getElementById('totalSpentText');
-      const bonusBalanceTextEl = document.getElementById('bonusBalanceText');
-      const openStampBtn = document.getElementById('openStampBtn');
-      const redeemBtn = document.getElementById('redeemBtn');
-      const undoBtn = document.getElementById('undoBtn');
-      const mainMsgEl = document.getElementById('mainMsg');
+      document.getElementById('loginModeBtn').addEventListener('click', () => setAuthMode('login'));
+      document.getElementById('registerModeBtn').addEventListener('click', () => setAuthMode('register'));
 
-      const cashierPanel = document.getElementById('cashierPanel');
-      const cashierTitle = document.getElementById('cashierTitle');
-      const amountFieldWrap = document.getElementById('amountFieldWrap');
-      const billAmountInput = document.getElementById('billAmountInput');
-      const pinInput = document.getElementById('pinInput');
-      const confirmCashierBtn = document.getElementById('confirmCashierBtn');
-      const cancelCashierBtn = document.getElementById('cancelCashierBtn');
-      const cashierMsgEl = document.getElementById('cashierMsg');
-
-      const aboutTextEl = document.getElementById('aboutText');
-      const aboutMetaEl = document.getElementById('aboutMeta');
-
-      billAmountInput.addEventListener('input', () => {
-        let value = billAmountInput.value.replace(/,/g, '.').replace(/[^\d.]/g, '');
-        const decimalIndex = value.indexOf('.');
-        if (decimalIndex !== -1) {
-          value = value.slice(0, decimalIndex + 1) + value.slice(decimalIndex + 1).replace(/\./g, '').slice(0, 2);
-        }
-        billAmountInput.value = value;
-      });
-
-      const allowedPinKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
-      pinInput.addEventListener('keydown', event => {
-        if (event.ctrlKey || event.metaKey || allowedPinKeys.includes(event.key)) return;
-        if (!/^\d$/.test(event.key)) event.preventDefault();
-      });
-      pinInput.addEventListener('input', () => {
-        pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4);
-      });
-      pinInput.addEventListener('paste', event => {
-        event.preventDefault();
-        const pastedText = event.clipboardData?.getData('text') || '';
-        const start = pinInput.selectionStart ?? pinInput.value.length;
-        const end = pinInput.selectionEnd ?? start;
-        pinInput.setRangeText(pastedText, start, end, 'end');
-        pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4);
-      });
-
-      let currentAction = 'stamp';
-      let stateRestaurant = null;
-      let stateCard = null;
-
-      function renderUI() {
-        const r = stateRestaurant || {};
-        const c = stateCard || { stamps_count: 0, reward_unlocked: false, total_spent: 0, bonus_balance: 0 };
-
-        restNameEl.textContent = r.name || slug;
-        rewardBannerEl.textContent = (r.reward_text || 'BONUS').replace(/\bVIP\s+/gi, '');
-
-        const configuredGoal = Number(r.stamp_goal);
+      function renderCard(restaurant, card) {
+        document.getElementById('restName').textContent = restaurant.name || slug;
+        document.getElementById('rewardBanner').textContent = (restaurant.reward_text || 'BONUS').replace(/\bVIP\s+/gi, '');
+        const configuredGoal = Number(restaurant.stamp_goal);
         const goal = Number.isInteger(configuredGoal) && configuredGoal > 0 ? configuredGoal : 5;
-        const storedStamps = Number(c.stamps_count);
-        const stamps = Number.isFinite(storedStamps) ? Math.max(0, Math.floor(storedStamps)) : 0;
-        const shouldUnlock = stamps >= goal;
-
-        stampsGridEl.innerHTML = '';
-        for (let i = 1; i <= goal; i++) {
+        const stampsValue = Number(card.stamps_count);
+        const stamps = Number.isFinite(stampsValue) ? Math.max(0, Math.floor(stampsValue)) : 0;
+        const grid = document.getElementById('stampsGrid');
+        grid.replaceChildren();
+        for (let index = 1; index <= goal; index += 1) {
           const slot = document.createElement('div');
-          slot.className = 'stamp-slot' + (i <= stamps ? ' filled' : '');
-          slot.textContent = i <= stamps ? '✓' : String(i);
-          stampsGridEl.appendChild(slot);
+          slot.className = `stamp-slot${index <= stamps ? ' filled' : ''}`;
+          slot.textContent = index <= stamps ? '✓' : String(index);
+          grid.appendChild(slot);
+        }
+        document.getElementById('progressText').textContent = `${Math.min(stamps, goal)} / ${goal} möhür`;
+        document.getElementById('totalSpentText').textContent = `${Number(card.total_spent || 0).toFixed(2)} AZN`;
+        document.getElementById('bonusBalanceText').textContent = `${Number(card.bonus_balance || 0).toFixed(2)} AZN`;
+
+        document.getElementById('customerName').textContent = `${customer.first_name} ${customer.last_name}`;
+        document.getElementById('customerId').textContent = `Müştəri ID: ${customer.id}`;
+        customerQr.replaceChildren();
+        if (typeof QRCode !== 'function') {
+          showMessage(mainMsg, 'QR kod kitabxanası yüklənmədi. İnternet bağlantısını yoxlayın.', true);
+        } else {
+          new QRCode(customerQr, { text: customer.id, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
         }
 
-        progressTextEl.textContent = `${Math.min(stamps, goal)} / ${goal} möhür`;
-        totalSpentTextEl.textContent = `${Number(c.total_spent || 0).toFixed(2)} AZN`;
-        bonusBalanceTextEl.textContent = `${Number(c.bonus_balance || 0).toFixed(2)} AZN`;
-
-        redeemBtn.classList.toggle('hidden', !shouldUnlock);
-
-        aboutTextEl.textContent = r.about || '';
-        const metaLines = [];
-        if (r.address) metaLines.push(`Ünvan: ${r.address}`);
-        if (r.phone) metaLines.push(`Əlaqə: ${r.phone}`);
-        if (r.instagram) metaLines.push(`Instagram: ${r.instagram}`);
-        aboutMetaEl.textContent = '';
-        metaLines.forEach(line => {
-          const lineEl = document.createElement('div');
-          lineEl.textContent = line;
-          aboutMetaEl.appendChild(lineEl);
-        });
+        document.getElementById('aboutText').textContent = restaurant.about || '';
+        const meta = document.getElementById('aboutMeta');
+        meta.replaceChildren();
+        [['Ünvan', restaurant.address], ['Əlaqə', restaurant.phone], ['Instagram', restaurant.instagram]]
+          .filter(([, value]) => value)
+          .forEach(([label, value]) => {
+            const line = document.createElement('div');
+            line.textContent = `${label}: ${value}`;
+            meta.appendChild(line);
+          });
+        authCard.classList.add('hidden');
+        customerCard.classList.remove('hidden');
+        document.getElementById('aboutBox').classList.remove('hidden');
       }
 
-      async function loadCard() {
+      function getLegacyVisitorToken() {
         try {
-          const res = await fetch(`/.netlify/functions/get-card?slug=${encodeURIComponent(slug)}&visitorToken=${encodeURIComponent(visitorToken)}`);
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || !data.restaurant || !data.card) {
-            mainMsgEl.textContent = data.error || 'Məlumat yüklənmədi.';
-            mainMsgEl.className = 'msg err';
-            return false;
-          }
-          stateRestaurant = data.restaurant;
-          stateCard = data.card;
-          renderUI();
-          return true;
+          return localStorage.getItem(`yenegel_visitor_${slug}`) || '';
         } catch {
-          mainMsgEl.textContent = 'Serverlə əlaqə alınmadı.';
-          mainMsgEl.className = 'msg err';
-          return false;
+          return '';
         }
       }
 
-      function openCashier(action) {
-        currentAction = action;
-        cashierMsgEl.textContent = '';
-        pinInput.value = '';
-        billAmountInput.value = '';
-        amountFieldWrap.classList.toggle('hidden', action !== 'stamp');
-
-        if (action === 'stamp') cashierTitle.textContent = 'Möhür Əlavə Et (Kassir)';
-        else if (action === 'redeem') cashierTitle.textContent = 'Bonusu İstifadə Et (Kassir)';
-        else cashierTitle.textContent = 'Son Möhürü Geri Al (Kassir)';
-
-        cashierPanel.classList.remove('hidden');
-        document.body.classList.add('modal-open');
-        (action === 'stamp' ? billAmountInput : pinInput).focus();
+      async function loadCustomerCard() {
+        const response = await fetch(
+          `/.netlify/functions/get-card?slug=${encodeURIComponent(slug)}&visitorToken=${encodeURIComponent(customer.id)}`
+        );
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.restaurant || !data.card) {
+          throw new Error(data.error || 'Müştəri kartı yüklənmədi.');
+        }
+        renderCard(data.restaurant, data.card);
       }
 
-      function closeCashier() {
-        cashierPanel.classList.add('hidden');
-        document.body.classList.remove('modal-open');
-        cashierMsgEl.textContent = '';
-        const trigger = currentAction === 'redeem' ? redeemBtn : currentAction === 'undo' ? undoBtn : openStampBtn;
-        trigger.focus();
+      async function completeAuthentication(profile) {
+        if (!profile || !profile.id) throw new Error('Müştəri məlumatı cavabda tapılmadı.');
+        customer = {
+          id: profile.id,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          phone: profile.phone
+        };
+        localStorage.setItem(localKey, JSON.stringify(customer));
+        await loadCustomerCard();
       }
 
-      async function handleCashierConfirm() {
-        cashierMsgEl.textContent = '';
-        mainMsgEl.textContent = '';
-
-        const pin = pinInput.value.trim();
-        if (!/^\d{4}$/.test(pin)) {
-          cashierMsgEl.textContent = 'PİN kod tam 4 rəqəm olmalıdır.';
-          return;
-        }
-
-        let endpoint = '/.netlify/functions/add-stamp';
-        const payload = { slug, visitorToken, pin };
-
-        if (currentAction === 'stamp') {
-          const amount = Number(billAmountInput.value.replace(',', '.'));
-          if (!Number.isFinite(amount) || amount <= 0) {
-            cashierMsgEl.textContent = 'Düzgün hesab məbləği daxil edin.';
-            return;
-          }
-          payload.amount = amount;
-          endpoint = '/.netlify/functions/add-stamp';
-        } else if (currentAction === 'redeem') {
-          endpoint = '/.netlify/functions/redeem-bonus';
-        } else if (currentAction === 'undo') {
-          endpoint = '/.netlify/functions/undo-stamp';
-        }
-
-        confirmCashierBtn.disabled = true;
+      loginForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        authMsg.textContent = '';
+        loginBtn.disabled = true;
         try {
-          const res = await fetch(endpoint, {
+          const response = await fetch('/.netlify/functions/customer-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+              slug,
+              phone: document.getElementById('loginPhoneInput').value.trim(),
+              legacy_visitor_token: getLegacyVisitorToken()
+            })
           });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            cashierMsgEl.textContent = data.error || 'Əməliyyat alınmadı.';
-            return;
-          }
-
-          closeCashier();
-          if (await loadCard()) {
-            mainMsgEl.textContent = data.message || 'Əməliyyat uğurla tamamlandı!';
-            mainMsgEl.className = 'msg ok';
-          } else {
-            mainMsgEl.textContent = 'Əməliyyat tamamlandı, lakin kart yenilənmədi. Səhifəni yeniləyin.';
-            mainMsgEl.className = 'msg err';
-          }
-        } catch {
-          cashierMsgEl.textContent = 'Şəbəkə xətası baş verdi.';
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.customer) throw new Error(data.error || 'Giriş alınmadı.');
+          await completeAuthentication(data.customer);
+        } catch (error) {
+          showMessage(authMsg, error.message || 'Serverlə əlaqə alınmadı.', true);
         } finally {
-          confirmCashierBtn.disabled = false;
+          loginBtn.disabled = false;
         }
+      });
+
+      registrationForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        authMsg.textContent = '';
+        registerBtn.disabled = true;
+        try {
+          const response = await fetch('/.netlify/functions/customer-register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              slug,
+              first_name: document.getElementById('firstNameInput').value.trim(),
+              last_name: document.getElementById('lastNameInput').value.trim(),
+              phone: document.getElementById('phoneInput').value.trim(),
+              legacy_visitor_token: getLegacyVisitorToken()
+            })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.customer) throw new Error(data.error || 'Qeydiyyat tamamlanmadı.');
+          await completeAuthentication(data.customer);
+        } catch (error) {
+          showMessage(authMsg, error.message || 'Serverlə əlaqə alınmadı.', true);
+        } finally {
+          registerBtn.disabled = false;
+        }
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        try {
+          localStorage.removeItem(localKey);
+        } catch {
+          showMessage(mainMsg, 'Çıxış məlumatını bu cihazdan silmək mümkün olmadı.', true);
+          return;
+        }
+        customer = null;
+        customerCard.classList.add('hidden');
+        authCard.classList.remove('hidden');
+        document.getElementById('aboutBox').classList.add('hidden');
+        loginForm.reset();
+        registrationForm.reset();
+        customerQr.replaceChildren();
+        setAuthMode('login');
+      });
+
+      try {
+        const stored = localStorage.getItem(localKey);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(parsed.id)) {
+            customer = parsed;
+            loadCustomerCard().catch(error => showMessage(authMsg, error.message, true));
+          } else {
+            localStorage.removeItem(localKey);
+          }
+        }
+      } catch (error) {
+        showMessage(authMsg, 'Bu cihazda müştəri məlumatını oxumaq mümkün olmadı.', true);
       }
-
-      openStampBtn.addEventListener('click', () => openCashier('stamp'));
-      redeemBtn.addEventListener('click', () => openCashier('redeem'));
-      undoBtn.addEventListener('click', () => openCashier('undo'));
-      cancelCashierBtn.addEventListener('click', closeCashier);
-      confirmCashierBtn.addEventListener('click', handleCashierConfirm);
-      cashierPanel.addEventListener('click', event => {
-        if (event.target === cashierPanel) closeCashier();
-      });
-      document.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && !cashierPanel.classList.contains('hidden')) {
-          closeCashier();
-        }
-      });
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') loadCard();
-      });
-
-      loadCard();
     })();
   </script>
 </body>
