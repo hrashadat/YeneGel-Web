@@ -30,7 +30,7 @@ exports.handler = async event => {
       return jsonResponse(400, { error: 'Sorğu məlumatı etibarsızdır.' });
     }
 
-    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : 'kaya';
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
     const accountName = typeof body.account_name === 'string' ? normalizeAccountName(body.account_name) : '';
     const accessCode = typeof body.access_code === 'string' ? body.access_code : '';
     const legacyToken = typeof body.legacy_visitor_token === 'string' ? body.legacy_visitor_token.trim() : '';

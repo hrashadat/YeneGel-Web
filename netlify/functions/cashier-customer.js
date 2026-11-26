@@ -13,7 +13,7 @@ exports.handler = async event => {
     if (!body) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
-    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : 'kaya';
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
     const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
     const customerId = typeof body.customer_id === 'string' ? body.customer_id.trim() : '';
     if (!isValidRestaurantSlug(slug) || !isValidUuid(customerId)) {

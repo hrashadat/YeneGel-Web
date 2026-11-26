@@ -61,6 +61,11 @@
       gap: 16px;
     }
 
+    .slug-error {
+      width: min(100%, 460px);
+      margin: auto;
+    }
+
     .top-bar {
       width: 100%;
       display: flex;
@@ -620,6 +625,10 @@
       <span>Yüklənir...</span>
     </div>
   </div>
+  <section id="invalidRestaurantLink" class="card slug-error hidden" role="alert">
+    <h1 class="about-title">Restoran linki tələb olunur</h1>
+    <p class="about-desc">Səhifəyə daxil olmaq üçün restoranın linkində ?slug=restoran-kodu olmalıdır.</p>
+  </section>
   <div class="app">
     <div class="top-bar">
       <div class="brand-pill">
@@ -733,7 +742,13 @@
   <script>
     (function () {
       const params = new URLSearchParams(window.location.search);
-      const slug = (params.get('slug') || 'kaya').trim().toLowerCase();
+      const requestedSlug = params.get('slug');
+      const slug = typeof requestedSlug === 'string' ? requestedSlug.trim().toLowerCase() : '';
+      if (!/^[a-z0-9-]{1,80}$/.test(slug)) {
+        document.querySelector('.app').classList.add('hidden');
+        document.getElementById('invalidRestaurantLink').classList.remove('hidden');
+        return;
+      }
       const localKey = `yenegel_customer_${slug}`;
       const authCard = document.getElementById('authCard');
       const customerCard = document.getElementById('customerCard');

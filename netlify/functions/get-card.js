@@ -57,7 +57,7 @@ exports.handler = async (event) => {
 
     const slug = typeof event.queryStringParameters?.slug === 'string'
       ? event.queryStringParameters.slug.trim().toLowerCase()
-      : 'kaya';
+      : '';
     const visitorToken = typeof event.queryStringParameters?.visitorToken === 'string'
       ? event.queryStringParameters.visitorToken.trim()
       : '';

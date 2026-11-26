@@ -7,6 +7,8 @@
     'Giriş və qeydiyyat': ['Вход и регистрация', 'Sign-in and registration'],
     'Müştəri hesabı': ['Аккаунт клиента', 'Customer account'],
     'Davam etmək üçün giriş edin və ya yeni hesab yaradın.': ['Войдите или создайте аккаунт, чтобы продолжить.', 'Sign in or create an account to continue.'],
+    'Restoran linki tələb olunur': ['Требуется ссылка ресторана', 'Restaurant link required'],
+    'Səhifəyə daxil olmaq üçün restoranın linkində ?slug=restoran-kodu olmalıdır.': ['Для доступа используйте ссылку ресторана с параметром ?slug=код-ресторана.', 'Use the restaurant link with the ?slug=restaurant-code parameter to access this page.'],
     'Giriş': ['Вход', 'Sign in'],
     'Qeydiyyat': ['Регистрация', 'Register'],
     'Hesab adı': ['Имя аккаунта', 'Account name'],

@@ -12,7 +12,7 @@ exports.handler = async event => {
     if (!body) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
-    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : 'kaya';
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
     const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
     if (!isValidRestaurantSlug(slug)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
