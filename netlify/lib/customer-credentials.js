@@ -19,7 +19,7 @@ function isValidAccountName(value) {
 }
 
 function isValidAccessCode(value) {
-  return typeof value === 'string' && value.length >= 4 && value.length <= 10;
+  return typeof value === 'string' && value.length >= 4 && value.length <= 32;
 }
 
 async function hashAccessCode(accessCode) {

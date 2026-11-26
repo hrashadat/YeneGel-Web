@@ -39,7 +39,7 @@ exports.handler = async event => {
       });
     }
     if (!isValidAccessCode(accessCode)) {
-      return jsonResponse(400, { error: 'Kod 4–10 simvoldan ibarət olmalıdır.' });
+      return jsonResponse(400, { error: 'Kod 4–32 simvoldan ibarət olmalıdır.' });
     }
 
     const { url, key } = getSupabaseConfig();
