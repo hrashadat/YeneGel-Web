@@ -70,6 +70,48 @@
       padding: 0 2px;
     }
 
+    .top-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+    }
+
+    .cashier-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 8px 13px;
+      border: 1px solid #181816;
+      border-radius: 12px;
+      background: #181816;
+      color: #FFFFFF;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.2;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(24, 24, 22, 0.14);
+      transition: background 0.2s ease, transform 0.15s ease;
+    }
+
+    .cashier-link:hover,
+    .cashier-link:focus-visible {
+      background: #302E2A;
+      transform: translateY(-1px);
+    }
+
+    body:not(.light-mode) .cashier-link {
+      border-color: #F7F5F0;
+      background: #F7F5F0;
+      color: #181816;
+    }
+
+    body:not(.light-mode) .cashier-link:hover,
+    body:not(.light-mode) .cashier-link:focus-visible {
+      background: #FFFFFF;
+    }
+
     .brand-pill {
       padding: 2px 0;
     }
@@ -474,13 +516,6 @@
 
     .auth-modes { width: 100%; margin-bottom: 18px; }
     .auth-mode-btn { flex: 1; }
-    .auth-panel-link {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 12px;
-      text-decoration: none;
-    }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -491,9 +526,12 @@
         <strong>Yenə gəl</strong>
         <span>MÜŞTƏRİ KARTI</span>
       </div>
-      <div class="theme-switch" role="group" aria-label="Tema seçimi">
-        <button id="lightThemeBtn" type="button" class="theme-btn active">Light</button>
-        <button id="darkThemeBtn" type="button" class="theme-btn">Dark</button>
+      <div class="top-actions">
+        <div class="theme-switch" role="group" aria-label="Tema seçimi">
+          <button id="lightThemeBtn" type="button" class="theme-btn active">Light</button>
+          <button id="darkThemeBtn" type="button" class="theme-btn">Dark</button>
+        </div>
+        <a id="cashierLink" class="cashier-link" href="kassir.html" aria-label="Kassir/Admin girişi">Kassir/Admin girişi</a>
       </div>
     </div>
 
@@ -527,7 +565,6 @@
         <button id="registerBtn" type="submit" class="btn-primary">Qeydiyyatdan keç</button>
       </form>
       <div id="authMsg" class="msg" role="status"></div>
-      <a id="cashierLink" class="btn-secondary auth-panel-link" href="kassir.html">Kassir / Admin paneli</a>
     </section>
 
     <main id="customerCard" class="card hidden">
@@ -583,6 +620,7 @@
       const authMsg = document.getElementById('authMsg');
       const mainMsg = document.getElementById('mainMsg');
       const customerQr = document.getElementById('customerQr');
+      const cashierLink = document.getElementById('cashierLink');
       let cardUpdateChannel = null;
       try {
         if (typeof BroadcastChannel === 'function') {
@@ -605,7 +643,7 @@
       };
       document.getElementById('darkThemeBtn').addEventListener('click', () => applyTheme('dark'));
       document.getElementById('lightThemeBtn').addEventListener('click', () => applyTheme('light'));
-      document.getElementById('cashierLink').href = `kassir.html?slug=${encodeURIComponent(slug)}`;
+      cashierLink.href = `kassir.html?slug=${encodeURIComponent(slug)}`;
 
       function showMessage(element, message, isError) {
         element.textContent = message;
@@ -664,6 +702,7 @@
           });
         authCard.classList.add('hidden');
         customerCard.classList.remove('hidden');
+        cashierLink.classList.add('hidden');
         document.getElementById('aboutBox').classList.remove('hidden');
       }
 
@@ -806,6 +845,7 @@
           phone: profile.phone
         };
         localStorage.setItem(localKey, JSON.stringify(customer));
+        cashierLink.classList.add('hidden');
         await loadCustomerCard();
       }
 
@@ -867,6 +907,7 @@
           return;
         }
         customer = null;
+        cashierLink.classList.remove('hidden');
         lastCardSnapshot = '';
         if (cardPollTimer !== null) {
           window.clearInterval(cardPollTimer);
@@ -887,6 +928,7 @@
           const parsed = JSON.parse(stored);
           if (parsed && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(parsed.id)) {
             customer = parsed;
+            cashierLink.classList.add('hidden');
             loadCustomerCard().catch(error => showMessage(authMsg, error.message, true));
           } else {
             localStorage.removeItem(localKey);
