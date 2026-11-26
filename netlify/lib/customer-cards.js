@@ -30,17 +30,28 @@ async function ensureCustomerCard(url, key, restaurantId, customerId, legacyToke
     return;
   }
 
-  await sbFetch(url, key, 'loyalty_cards', {
-    method: 'POST',
-    body: JSON.stringify({
-      restaurant_id: restaurantId,
-      visitor_token: customerId,
-      stamps_count: 0,
-      reward_unlocked: false,
-      total_spent: 0,
-      bonus_balance: 0
-    })
-  });
+  try {
+    await sbFetch(url, key, 'loyalty_cards', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurant_id: restaurantId,
+        visitor_token: customerId,
+        stamps_count: 0,
+        reward_unlocked: false,
+        total_spent: 0,
+        bonus_balance: 0,
+        bonus_carryover: 0
+      })
+    });
+  } catch (error) {
+    if (error.code !== '23505') throw error;
+    const concurrentCard = await sbFetch(
+      url,
+      key,
+      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurantId)}&visitor_token=eq.${encodeURIComponent(customerId)}&select=id`
+    );
+    if (!concurrentCard?.[0]) throw error;
+  }
 }
 
 module.exports = { ensureCustomerCard };

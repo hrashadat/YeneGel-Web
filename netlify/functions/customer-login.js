@@ -7,8 +7,9 @@ const {
   verifyAccessCode
 } = require('../lib/customer-credentials');
 const { normalizeCard } = require('../lib/loyalty');
-const { parseJsonObject } = require('../lib/request');
+const { encodeQueryValue, isValidRestaurantSlug, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, getSupabaseErrorMessage, sbFetch } = require('../lib/supabase');
+const { secureHandler } = require('../lib/security');
 
 function jsonResponse(statusCode, body) {
   return {
@@ -29,10 +30,13 @@ exports.handler = async event => {
       return jsonResponse(400, { error: 'Sorğu məlumatı etibarsızdır.' });
     }
 
-    const slug = String(body.slug || 'kaya').trim().toLowerCase();
-    const accountName = normalizeAccountName(body.account_name);
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : 'kaya';
+    const accountName = typeof body.account_name === 'string' ? normalizeAccountName(body.account_name) : '';
     const accessCode = typeof body.access_code === 'string' ? body.access_code : '';
-    const legacyToken = String(body.legacy_visitor_token || '').trim();
+    const legacyToken = typeof body.legacy_visitor_token === 'string' ? body.legacy_visitor_token.trim() : '';
+    if (!isValidRestaurantSlug(slug) || legacyToken.length > 180) {
+      return jsonResponse(400, { error: 'Sorğu məlumatı etibarsızdır.' });
+    }
     if (!isValidAccountName(accountName)) {
       return jsonResponse(400, {
         error: 'Hesab adında hərf, rəqəm, boşluq, nöqtə, tire və alt xətt istifadə edin.'
@@ -56,7 +60,7 @@ exports.handler = async event => {
     const customers = await sbFetch(
       url,
       key,
-      `customers?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&account_name=eq.${encodeURIComponent(accountName)}&select=id,account_name,access_code,first_name,last_name,phone`
+      `customers?restaurant_id=eq.${encodeQueryValue(restaurant.id)}&account_name=eq.${encodeQueryValue(accountName)}&select=id,account_name,access_code,first_name,last_name,phone`
     );
     const customer = customers?.[0];
     if (!customer || !(await verifyAccessCode(accessCode, customer.access_code))) {
@@ -67,7 +71,7 @@ exports.handler = async event => {
     const cards = await sbFetch(
       url,
       key,
-      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customer.id)}&select=id,stamps_count,reward_unlocked,last_stamped_at,total_spent,bonus_balance`
+      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customer.id)}&select=id,stamps_count,reward_unlocked,last_stamped_at,total_spent,bonus_balance,bonus_carryover`
     );
     const card = cards?.[0];
     if (!card) throw new Error('Müştəri kartı hazırlana bilmədi.');
@@ -90,3 +94,5 @@ exports.handler = async event => {
     });
   }
 };
+
+exports.handler = secureHandler('customer-login', { limit: 30, windowSeconds: 60 }, exports.handler);

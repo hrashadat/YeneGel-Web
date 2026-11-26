@@ -1,46 +1,7 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const { parseJsonObject } = require('../lib/request');
-
-function getSupabaseConfig() {
-  const rawUrl = (process.env.SUPABASE_URL || '').trim();
-  const markdownMatch = rawUrl.match(/\((https?:\/\/[^)]+)\)/);
-  const url = (markdownMatch ? markdownMatch[1] : rawUrl)
-    .replace(/^\[|\]$/g, '')
-    .replace(/\/+$/, '');
-  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-
-  if (!url || !key) {
-    throw new Error('SUPABASE_URL və ya SUPABASE_SERVICE_ROLE_KEY təyin edilməyib.');
-  }
-  return { url, key };
-}
-
-async function sbFetch(url, key, path, options = {}) {
-  const res = await fetch(`${url}/rest/v1/${path}`, {
-    ...options,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
-  });
-
-  const text = await res.text();
-  let data = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { message: text };
-    }
-  }
-
-  if (!res.ok) {
-    throw new Error((data && (data.message || data.error)) || `Supabase xətası (${res.status})`);
-  }
-  return data;
-}
+const { constantTimeEqual, isBoundedString, isValidRestaurantSlug, parseJsonObject } = require('../lib/request');
+const { secureHandler } = require('../lib/security');
+const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -56,18 +17,21 @@ exports.handler = async (event) => {
         body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' })
       };
     }
-    const slug = String(body.slug || '').trim().toLowerCase();
-    const accessCode = String(body.accessCode || body.adminCode || body.admin_code || '').trim();
-    const currentPin = String(body.current_pin || '').trim();
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
+    const accessCodeValue = body.accessCode ?? body.adminCode ?? body.admin_code;
+    const accessCode = typeof accessCodeValue === 'string' ? accessCodeValue.trim() : '';
+    const currentPin = typeof body.current_pin === 'string' ? body.current_pin.trim() : '';
 
-    if (!slug || !accessCode || !/^\d{4}$/.test(currentPin)) {
+    if (!isValidRestaurantSlug(slug) || !accessCode || !isBoundedString(accessCode, 256) || !/^\d{4}$/.test(currentPin)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Slug, admin kodu və cari kassir PİN kodu tələb olunur.' }) };
     }
 
-    const stampGoalValue = String(body.stamp_goal ?? '').trim();
+    const stampGoalValue = typeof body.stamp_goal === 'number' || typeof body.stamp_goal === 'string'
+      ? String(body.stamp_goal).trim()
+      : '';
     const stampGoal = /^\d+$/.test(stampGoalValue) ? Number(stampGoalValue) : NaN;
-    const cashierPin = String(body.cashier_pin || '').trim();
-    const bonusMode = String(body.bonus_mode || '').trim().toLowerCase();
+    const cashierPin = typeof body.cashier_pin === 'string' ? body.cashier_pin.trim() : '';
+    const bonusMode = typeof body.bonus_mode === 'string' ? body.bonus_mode.trim().toLowerCase() : '';
 
     if (!Number.isInteger(stampGoal) || stampGoal < 1 || stampGoal > 20) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Möhür sayı 1-20 arası tam ədəd olmalıdır.' }) };
@@ -87,13 +51,28 @@ exports.handler = async (event) => {
       bonusValueInput === undefined ||
       bonusValueInput === null ||
       (typeof bonusValueInput === 'string' && !bonusValueInput.trim()) ||
+      !(typeof bonusValueInput === 'number' || typeof bonusValueInput === 'string') ||
       !Number.isFinite(bonusValue) ||
-      bonusValue < 0
+      bonusValue < 0 ||
+      Math.round(bonusValue * 100) !== bonusValue * 100 ||
+      (bonusMode === 'percent' && bonusValue > 100) ||
+      (bonusMode === 'fixed' && bonusValue > 99999999.99)
     ) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Bonus dəyərini düzgün daxil edin.' }) };
     }
     if (body.menu_json !== undefined && (!body.menu_json || typeof body.menu_json !== 'object')) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Menyu JSON formatında obyekt və ya siyahı olmalıdır.' }) };
+    }
+    const boundedFields = [
+      [body.reward_text, 45],
+      [body.name, 120],
+      [body.about, 5000],
+      [body.address, 500],
+      [body.phone, 40],
+      [body.instagram, 255]
+    ];
+    if (boundedFields.some(([value, maximum]) => value !== undefined && !isBoundedString(value, maximum))) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran məlumatlarının uzunluğu etibarsızdır.' }) };
     }
 
     const { url, key } = getSupabaseConfig();
@@ -108,10 +87,10 @@ exports.handler = async (event) => {
       return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran tapılmadı.' }) };
     }
 
-    if (!existing.admin_code || String(existing.admin_code).trim() !== accessCode) {
+    if (!constantTimeEqual(String(existing.admin_code || '').trim(), accessCode)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Xüsusi giriş kodu yanlışdır.' }) };
     }
-    if (String(existing.pin_code || '').trim() !== currentPin) {
+    if (!constantTimeEqual(String(existing.pin_code || '').trim(), currentPin)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Kassir PİN kodu yanlışdır.' }) };
     }
 
@@ -145,13 +124,14 @@ exports.handler = async (event) => {
     if (!updatedRow) {
       return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran ayarları yenilənmədi.' }) };
     }
-    const { admin_code, ...safeUpdated } = updatedRow;
+    const { admin_code, pin_code, ...safeUpdated } = updatedRow;
 
     return {
       statusCode: 200,
       headers: JSON_HEADERS,
       body: JSON.stringify({ restaurant: safeUpdated })
     };
+
   } catch (err) {
     return {
       statusCode: 500,
@@ -160,3 +140,5 @@ exports.handler = async (event) => {
     };
   }
 };
+
+exports.handler = secureHandler('update-restaurant', { limit: 20, maxBodyBytes: 524288 }, exports.handler);

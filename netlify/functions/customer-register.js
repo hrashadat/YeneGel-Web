@@ -6,8 +6,9 @@ const {
   isValidAccountName,
   normalizeAccountName
 } = require('../lib/customer-credentials');
-const { parseJsonObject } = require('../lib/request');
+const { encodeQueryValue, isValidRestaurantSlug, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, getSupabaseErrorMessage, sbFetch } = require('../lib/supabase');
+const { secureHandler } = require('../lib/security');
 
 function jsonResponse(statusCode, body) {
   return {
@@ -28,10 +29,13 @@ exports.handler = async event => {
       return jsonResponse(400, { error: 'Sorğu məlumatı etibarsızdır.' });
     }
 
-    const slug = String(body.slug || 'kaya').trim().toLowerCase();
-    const accountName = normalizeAccountName(body.account_name);
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : 'kaya';
+    const accountName = typeof body.account_name === 'string' ? normalizeAccountName(body.account_name) : '';
     const accessCode = typeof body.access_code === 'string' ? body.access_code : '';
-    const legacyToken = String(body.legacy_visitor_token || '').trim();
+    const legacyToken = typeof body.legacy_visitor_token === 'string' ? body.legacy_visitor_token.trim() : '';
+    if (!isValidRestaurantSlug(slug) || legacyToken.length > 180) {
+      return jsonResponse(400, { error: 'Sorğu məlumatı etibarsızdır.' });
+    }
     if (!isValidAccountName(accountName)) {
       return jsonResponse(400, {
         error: 'Hesab adında hərf, rəqəm, boşluq, nöqtə, tire və alt xətt istifadə edin.'
@@ -55,7 +59,7 @@ exports.handler = async event => {
     const existing = await sbFetch(
       url,
       key,
-      `customers?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&account_name=eq.${encodeURIComponent(accountName)}&select=id`
+      `customers?restaurant_id=eq.${encodeQueryValue(restaurant.id)}&account_name=eq.${encodeQueryValue(accountName)}&select=id`
     );
     if (existing?.length) {
       return jsonResponse(409, { error: 'Bu hesab adı artıq istifadə olunur. Başqa hesab adı seçin.' });
@@ -104,3 +108,5 @@ exports.handler = async event => {
     });
   }
 };
+
+exports.handler = secureHandler('customer-register', { limit: 20, windowSeconds: 60 }, exports.handler);

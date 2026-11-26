@@ -1,7 +1,8 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const { normalizeCard } = require('../lib/loyalty');
-const { parseJsonObject } = require('../lib/request');
+const { constantTimeEqual, isValidRestaurantSlug, isValidUuid, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
+const { secureHandler } = require('../lib/security');
 
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') {
@@ -12,9 +13,12 @@ exports.handler = async event => {
     if (!body) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
-    const slug = String(body.slug || 'kaya').trim().toLowerCase();
-    const pin = String(body.pin || '').trim();
-    const customerId = String(body.customer_id || '').trim();
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : 'kaya';
+    const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
+    const customerId = typeof body.customer_id === 'string' ? body.customer_id.trim() : '';
+    if (!isValidRestaurantSlug(slug) || !isValidUuid(customerId)) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'QR kod etibarsızdır.' }) };
+    }
     if (!/^\d{4}$/.test(pin)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod 4 rəqəm olmalıdır.' }) };
     }
@@ -31,7 +35,7 @@ exports.handler = async event => {
     if (!restaurant) {
       return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran tapılmadı.' }) };
     }
-    if (String(restaurant.pin_code || '').trim() !== pin) {
+    if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), pin)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod yanlışdır.' }) };
     }
     const customers = await sbFetch(
@@ -46,7 +50,7 @@ exports.handler = async event => {
     const cards = await sbFetch(
       url,
       key,
-      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customer.id)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance`
+      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customer.id)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`
     );
     const card = cards?.[0];
     if (!card) {
@@ -57,8 +61,11 @@ exports.handler = async event => {
       headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
       body: JSON.stringify({ customer, card: normalizeCard(restaurant, card) })
     };
+
   } catch (err) {
     console.error('cashier-customer error:', err);
     return { statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Server xətası: ' + err.message }) };
   }
 };
+
+exports.handler = secureHandler('cashier-customer', { limit: 60 }, exports.handler);

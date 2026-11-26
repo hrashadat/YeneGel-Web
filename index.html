@@ -624,6 +624,11 @@
         <span>MÜŞTƏRİ KARTI</span>
       </div>
       <div class="top-actions">
+        <div class="theme-switch" role="group" aria-label="Dil seçimi">
+          <button type="button" class="theme-btn active" data-language="az" aria-pressed="true">AZ</button>
+          <button type="button" class="theme-btn" data-language="ru" aria-pressed="false">RU</button>
+          <button type="button" class="theme-btn" data-language="en" aria-pressed="false">EN</button>
+        </div>
         <div class="theme-switch" role="group" aria-label="Tema seçimi">
           <button id="lightThemeBtn" type="button" class="theme-btn active">Light</button>
           <button id="darkThemeBtn" type="button" class="theme-btn">Dark</button>
@@ -642,7 +647,7 @@
       <form id="loginForm" class="hidden">
         <div class="field">
           <label for="loginAccountNameInput">Hesab adı</label>
-          <input id="loginAccountNameInput" class="input" type="text" minlength="3" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Hesab adınızı daxil edin" required />
+          <input id="loginAccountNameInput" class="input" type="text" inputmode="email" minlength="3" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Hesab adınızı daxil edin" required />
         </div>
         <div class="field">
           <label for="loginAccessCodeInput">Kod (4–32 simvol)</label>
@@ -662,7 +667,7 @@
       <form id="registrationForm">
         <div class="field">
           <label for="accountNameInput">Hesab adı</label>
-          <input id="accountNameInput" class="input" type="text" minlength="3" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Yeni hesab adı yaradın" required />
+          <input id="accountNameInput" class="input" type="text" inputmode="email" minlength="3" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Yeni hesab adı yaradın" required />
         </div>
         <div class="field">
           <label for="accessCodeInput">Öz kodunuz (4–32 simvol)</label>
@@ -720,6 +725,7 @@
     </section>
   </div>
 
+  <script src="translations.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     (function () {
@@ -737,6 +743,7 @@
       const customerQr = document.getElementById('customerQr');
       const cashierLink = document.getElementById('cashierLink');
       const loadingOverlay = document.getElementById('loadingOverlay');
+      const t = (text, replacements) => window.YeneGelI18n.t(text, replacements);
       let pendingLoadingRequests = 0;
       let loadingDelay = null;
       let cardUpdateChannel = null;
@@ -752,6 +759,8 @@
       let cardRefreshPromise = null;
       let cardRefreshQueued = false;
       let lastCardSnapshot = '';
+      let renderedRestaurant = null;
+      let renderedCard = null;
 
       const applyTheme = mode => {
         const isLight = mode !== 'dark';
@@ -769,7 +778,7 @@
           const isVisible = input.type === 'password';
           input.type = isVisible ? 'text' : 'password';
           toggle.setAttribute('aria-pressed', String(isVisible));
-          const label = isVisible ? 'Kodu gizlət' : 'Kodu göstər';
+          const label = t(isVisible ? 'Kodu gizlət' : 'Kodu göstər');
           toggle.setAttribute('aria-label', label);
           toggle.title = label;
         });
@@ -778,7 +787,7 @@
       document.querySelectorAll('.code-visibility-toggle').forEach(bindCodeVisibilityToggle);
 
       function showMessage(element, message, isError) {
-        element.textContent = message;
+        element.textContent = t(message);
         element.className = `msg ${isError ? 'err' : 'ok'}`;
       }
 
@@ -808,7 +817,7 @@
         try {
           const response = await fetch(url, options);
           const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.error || 'Sorğu tamamlanmadı.');
+          if (!response.ok) throw new Error(t(data.error || 'Sorğu tamamlanmadı.'));
           return data;
         } finally {
           if (withLoading) endLoading();
@@ -828,6 +837,8 @@
       document.getElementById('registerModeBtn').addEventListener('click', () => setAuthMode('register'));
 
       function renderCard(restaurant, card) {
+        renderedRestaurant = restaurant;
+        renderedCard = card;
         document.getElementById('restName').textContent = restaurant.name || slug;
         document.getElementById('rewardBanner').textContent = (restaurant.reward_text || 'BONUS').replace(/\bVIP\s+/gi, '');
         const configuredGoal = Number(restaurant.stamp_goal);
@@ -842,13 +853,21 @@
           slot.textContent = index <= stamps ? '✓' : String(index);
           grid.appendChild(slot);
         }
-        document.getElementById('progressText').textContent = `${Math.min(stamps, goal)} / ${goal} möhür`;
+        document.getElementById('progressText').textContent = t('{{current}} / {{goal}} möhür', {
+          current: Math.min(stamps, goal),
+          goal
+        });
         document.getElementById('totalSpentText').textContent = `${Number(card.total_spent || 0).toFixed(2)} AZN`;
-        document.getElementById('bonusBalanceText').textContent = `${Number(card.bonus_balance || 0).toFixed(2)} AZN`;
+        const carryover = Number(card.bonus_carryover || 0);
+        const mainBonus = Math.max(0, Number(card.bonus_balance || 0) - carryover);
+        document.getElementById('bonusBalanceText').textContent = t(
+          '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)',
+          { amount: mainBonus.toFixed(2), carryover: carryover.toFixed(2) }
+        );
 
         document.getElementById('customerName').textContent =
           customer.account_name || [customer.first_name, customer.last_name].filter(Boolean).join(' ');
-        document.getElementById('customerId').textContent = `Müştəri ID: ${customer.id}`;
+        document.getElementById('customerId').textContent = t('Müştəri ID: {{id}}', { id: customer.id });
         customerQr.replaceChildren();
         if (typeof QRCode !== 'function') {
           showMessage(mainMsg, 'QR kod kitabxanası yüklənmədi. İnternet bağlantısını yoxlayın.', true);
@@ -859,7 +878,7 @@
         document.getElementById('aboutText').textContent = restaurant.about || '';
         const meta = document.getElementById('aboutMeta');
         meta.replaceChildren();
-        [['Ünvan', restaurant.address], ['Əlaqə', restaurant.phone], ['Instagram', restaurant.instagram]]
+        [[t('Ünvan'), restaurant.address], [t('Əlaqə'), restaurant.phone], [t('Instagram'), restaurant.instagram]]
           .filter(([, value]) => value)
           .forEach(([label, value]) => {
             const line = document.createElement('div');
@@ -887,6 +906,8 @@
             stamps_count: card.stamps_count,
             total_spent: card.total_spent,
             bonus_balance: card.bonus_balance,
+            bonus_carryover: card.bonus_carryover,
+            bonus_cycle_balance: card.bonus_cycle_balance,
             reward_unlocked: card.reward_unlocked
           }
         });
@@ -896,11 +917,7 @@
         if (cardPollTimer !== null) return;
         cardPollTimer = window.setInterval(() => {
           if (customer && document.visibilityState === 'visible') {
-            loadCustomerCard({ withLoading: false }).catch(() => {
-              mainMsg.textContent = 'Kart məlumatı yenilənə bilmədi. Yenidən yoxlanılır...';
-              mainMsg.className = 'msg err';
-              mainMsg.dataset.refreshError = 'true';
-            });
+            loadCustomerCard({ withLoading: false }).catch(() => {});
           }
         }, 3000);
       }
@@ -974,6 +991,7 @@
             cardRefreshQueued = true;
             return;
           }
+
           loadCustomerCard({ withLoading: false }).catch(error => {
             mainMsg.textContent = error.message || 'Müştəri kartı yenilənmədi.';
             mainMsg.className = 'msg err';
@@ -981,6 +999,13 @@
           });
         }
       }
+
+      window.addEventListener('yenegel-language-change', () => {
+        [authMsg, mainMsg].forEach(element => {
+          if (element.textContent) element.textContent = t(element.textContent);
+        });
+        if (renderedRestaurant && renderedCard && customer) renderCard(renderedRestaurant, renderedCard);
+      });
 
       if (cardUpdateChannel) {
         cardUpdateChannel.addEventListener('message', event => refreshForSignal(event.data));

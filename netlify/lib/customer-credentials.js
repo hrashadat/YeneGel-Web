@@ -15,7 +15,7 @@ function normalizeAccountName(value) {
 function isValidAccountName(value) {
   const accountName = normalizeAccountName(value);
   const length = Array.from(accountName).length;
-  return length >= 3 && length <= 32 && /^[\p{L}\p{N}_. -]+$/u.test(accountName);
+  return length >= 3 && length <= 32 && !/\p{C}/u.test(accountName);
 }
 
 function isValidAccessCode(value) {

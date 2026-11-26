@@ -4,3 +4,13 @@
 
 [functions]
   directory = "netlify/functions"
+
+# Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Netlify environment variables.
+# ALLOWED_ORIGINS is an optional comma-separated allowlist for trusted external origins.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(self)"

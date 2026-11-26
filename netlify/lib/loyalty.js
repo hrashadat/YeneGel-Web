@@ -46,24 +46,34 @@ function getBonusBalance(restaurant, card) {
   const pendingFixedBonus = unlocked && !wasUnlocked && mode !== 'percent'
     ? calculateBonusAmount(restaurant, 0)
     : 0;
-  return roundMoney(getStoredBonusBalance(card) + pendingFixedBonus);
+  return roundMoney(getStoredBonusBalance(card) + getStoredBonusCarryover(card) + pendingFixedBonus);
+}
+
+function getStoredBonusCarryover(card) {
+  const balance = Number(card?.bonus_carryover);
+  return Number.isFinite(balance) ? Math.max(0, roundMoney(balance)) : 0;
 }
 
 function normalizeCard(restaurant, card) {
   const stampsCount = getStampCount(card);
   const totalSpent = getTotalSpent(card);
+  const bonusCarryover = getStoredBonusCarryover(card);
+  const bonusBalance = getBonusBalance(restaurant, card);
   return {
     ...card,
     stamps_count: stampsCount,
     reward_unlocked: stampsCount >= getStampGoal(restaurant),
     total_spent: totalSpent,
-    bonus_balance: getBonusBalance(restaurant, card)
+    bonus_balance: bonusBalance,
+    bonus_carryover: bonusCarryover,
+    bonus_cycle_balance: roundMoney(Math.max(0, bonusBalance - bonusCarryover))
   };
 }
 
 module.exports = {
   calculateBonusAmount,
   getBonusBalance,
+  getStoredBonusCarryover,
   getStoredBonusBalance,
   getStampCount,
   getStampGoal,

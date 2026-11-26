@@ -1,5 +1,7 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const { normalizeCard } = require('../lib/loyalty');
+const { secureHandler } = require('../lib/security');
+const { isValidRestaurantSlug, isValidUuid } = require('../lib/request');
 
 function getSupabaseConfig() {
   const rawUrl = (process.env.SUPABASE_URL || '').trim();
@@ -50,10 +52,18 @@ exports.handler = async (event) => {
         headers: JSON_HEADERS,
         body: JSON.stringify({ error: 'Method Not Allowed' })
       };
+
     }
 
-    const slug = String(event.queryStringParameters?.slug || 'kaya').trim().toLowerCase();
-    const visitorToken = String(event.queryStringParameters?.visitorToken || '').trim();
+    const slug = typeof event.queryStringParameters?.slug === 'string'
+      ? event.queryStringParameters.slug.trim().toLowerCase()
+      : 'kaya';
+    const visitorToken = typeof event.queryStringParameters?.visitorToken === 'string'
+      ? event.queryStringParameters.visitorToken.trim()
+      : '';
+    if (!isValidRestaurantSlug(slug) || (visitorToken && !isValidUuid(visitorToken))) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
+    }
     const { url, key } = getSupabaseConfig();
 
     const restaurants = await sbFetch(
@@ -69,20 +79,22 @@ exports.handler = async (event) => {
         headers: JSON_HEADERS,
         body: JSON.stringify({ error: 'Restoran tapılmadı.' })
       };
+
     }
 
     let card = {
       stamps_count: 0,
       reward_unlocked: false,
       total_spent: 0,
-      bonus_balance: 0
+      bonus_balance: 0,
+      bonus_carryover: 0
     };
 
     if (visitorToken) {
       const cards = await sbFetch(
         url,
         key,
-        `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(visitorToken)}&select=id,stamps_count,reward_unlocked,last_stamped_at,total_spent,bonus_balance`
+        `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(visitorToken)}&select=id,stamps_count,reward_unlocked,last_stamped_at,total_spent,bonus_balance,bonus_carryover`
       );
       if (cards?.[0]) card = normalizeCard(restaurant, cards[0]);
     }
@@ -107,3 +119,5 @@ exports.handler = async (event) => {
     };
   }
 };
+
+exports.handler = secureHandler('get-card', { methods: ['GET'], limit: 3000 }, exports.handler);

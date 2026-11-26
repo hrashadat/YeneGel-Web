@@ -1,246 +1,60 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const { calculateBonusAmount, getBonusBalance, getStampCount, getStampGoal, getStoredBonusBalance, getTotalSpent, normalizeCard, roundMoney } = require('../lib/loyalty');
-const { parseJsonObject } = require('../lib/request');
+const { constantTimeEqual, parseJsonObject } = require('../lib/request');
+const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
+const { secureHandler } = require('../lib/security');
 
-function getSupabaseConfig() {
-  const rawUrl = (process.env.SUPABASE_URL || '').trim();
-  const markdownMatch = rawUrl.match(/\((https?:\/\/[^)]+)\)/);
-  const url = (markdownMatch ? markdownMatch[1] : rawUrl)
-    .replace(/^\[|\]$/g, '')
-    .replace(/\/+$/, '');
-  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const CUSTOMER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-  if (!url || !key) {
-    throw new Error('SUPABASE_URL və ya SUPABASE_SERVICE_ROLE_KEY təyin edilməyib.');
-  }
-  return { url, key };
-}
-
-async function sbFetch(url, key, path, options = {}) {
-  const res = await fetch(`${url}/rest/v1/${path}`, {
-    ...options,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
-  });
-
-  const text = await res.text();
-  let data = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { message: text };
-    }
-  }
-
-  if (!res.ok) {
-    throw new Error((data && (data.message || data.error)) || `Supabase xətası (${res.status})`);
-  }
-  return data;
-}
-
-exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ error: 'Method Not Allowed' })
-    };
-  }
-
+exports.handler = async event => {
   try {
     const body = parseJsonObject(event.body);
     if (!body) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' })
-      };
-    }
-    const slug = String(body.slug || 'kaya').trim().toLowerCase();
-    const pin = String(body.pin || body.pin_code || '').trim();
-    const visitorToken = String(body.visitorToken || '').trim();
-    const rawAmount = Number(body.amount);
-
-    if (!visitorToken) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'visitorToken tapılmadı.' })
-      };
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
 
-    if (!/^\d{4}$/.test(pin)) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'PİN kod tam 4 rəqəmdən ibarət olmalıdır.' })
-      };
-    }
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : 'kaya';
+    const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
+    const customerId = typeof body.customer_id === 'string'
+      ? body.customer_id.trim()
+      : typeof body.visitorToken === 'string' ? body.visitorToken.trim() : '';
+    const amount = Number(body.amount);
+    const billAmount = Number.isFinite(amount) ? Math.round((amount + Number.EPSILON) * 100) / 100 : NaN;
 
-    if (!Number.isFinite(rawAmount) || rawAmount <= 0) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Düzgün hesab məbləği daxil edin.' })
-      };
+    if (!/^[a-z0-9-]{1,80}$/.test(slug) || !/^\d{4}$/.test(pin) || !CUSTOMER_ID_PATTERN.test(customerId)) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
-
-    const billAmount = roundMoney(rawAmount);
-    if (!Number.isFinite(billAmount) || billAmount <= 0) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Hesab məbləği 0.01 AZN-dən az ola bilməz.' })
-      };
+    if (!Number.isFinite(billAmount) || billAmount <= 0 || billAmount > 99999999.99) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Düzgün hesab məbləği daxil edin.' }) };
     }
 
     const { url, key } = getSupabaseConfig();
-
     const restaurants = await sbFetch(
       url,
       key,
-      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,slug,name,stamp_goal,pin_code,cooldown_hours,bonus_mode,bonus_fixed_amount,bonus_percent`
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code`
     );
-
     const restaurant = restaurants?.[0];
     if (!restaurant) {
-      return {
-        statusCode: 404,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Restoran tapılmadı.' })
-      };
+      return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran tapılmadı.' }) };
+    }
+    if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), pin)) {
+      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod yanlışdır.' }) };
     }
 
-    if (String(restaurant.pin_code || '').trim() !== pin) {
-      return {
-        statusCode: 401,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Kassir PİN kodu yanlışdır.' })
-      };
-    }
-
-    const existingCards = await sbFetch(
-      url,
-      key,
-      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(visitorToken)}&select=id,stamps_count,reward_unlocked,last_stamped_at,total_spent,bonus_balance`
-    );
-
-    const goal = getStampGoal(restaurant);
-    const existingCard = existingCards?.[0] || null;
-    let currentCard = existingCard ? normalizeCard(restaurant, existingCard) : null;
-    const currentStamps = getStampCount(currentCard);
-    const prevSpent = getTotalSpent(currentCard);
-    const prevBonusBalance = currentCard ? getBonusBalance(restaurant, currentCard) : 0;
-    const pendingFixedBonus = currentCard
-      ? Math.max(0, roundMoney(currentCard.bonus_balance - getStoredBonusBalance(existingCard)))
-      : 0;
-    const nextTotalSpent = roundMoney(prevSpent + billAmount);
-    if (!Number.isFinite(nextTotalSpent)) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Hesab məbləği çox böyükdür.' })
-      };
-    }
-
-    const stampDelta = currentStamps >= goal ? 0 : 1;
-    const nextStamps = currentStamps + stampDelta;
-    const unlocked = nextStamps >= goal;
-    const mode = String(restaurant.bonus_mode || 'fixed').trim().toLowerCase();
-    const purchaseBonus = mode === 'percent' ? calculateBonusAmount(restaurant, billAmount) : 0;
-    const completionBonus = mode !== 'percent' && stampDelta === 1 && unlocked
-      ? calculateBonusAmount(restaurant, 0)
-      : 0;
-    const bonusDelta = roundMoney(purchaseBonus + completionBonus);
-    const nextBonusBalance = roundMoney(prevBonusBalance + bonusDelta);
-    const preservePendingUnlock = stampDelta === 0
-      && pendingFixedBonus > 0
-      && existingCard?.reward_unlocked !== true;
-    if (!Number.isFinite(nextBonusBalance)) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Bonus məbləği çox böyükdür.' })
-      };
-    }
-    const nextCardValues = {
-      stamps_count: nextStamps,
-      reward_unlocked: preservePendingUnlock ? false : unlocked,
-      total_spent: nextTotalSpent,
-      bonus_balance: preservePendingUnlock
-        ? roundMoney(nextBonusBalance - pendingFixedBonus)
-        : nextBonusBalance,
-      last_stamped_at: new Date().toISOString()
-    };
-
-    if (currentCard) {
-      const updated = await sbFetch(
-        url,
-        key,
-        `loyalty_cards?id=eq.${encodeURIComponent(currentCard.id)}`,
-        {
-          method: 'PATCH',
-          headers: { Prefer: 'return=representation' },
-          body: JSON.stringify(nextCardValues)
-        }
-      );
-      if (!updated?.[0]) throw new Error('Kart yenilənmədi.');
-      currentCard = normalizeCard(restaurant, updated[0]);
-    } else {
-      const inserted = await sbFetch(
-        url,
-        key,
-        'loyalty_cards',
-        {
-          method: 'POST',
-          headers: { Prefer: 'return=representation' },
-          body: JSON.stringify({
-            restaurant_id: restaurant.id,
-            visitor_token: visitorToken,
-            ...nextCardValues
-          })
-        }
-      );
-      if (!inserted?.[0]) throw new Error('Kart yaradılmadı.');
-      currentCard = normalizeCard(restaurant, inserted[0]);
-    }
-
-    if (!currentCard.id) throw new Error('Kart ID-si cavabda tapılmadı.');
-
-    await sbFetch(url, key, 'card_transactions', {
+    const result = await sbFetch(url, key, 'rpc/apply_customer_stamp_transaction', {
       method: 'POST',
       body: JSON.stringify({
-        restaurant_id: restaurant.id,
-        card_id: currentCard.id,
-        visitor_token: visitorToken,
-        tx_type: 'stamp',
-        bill_amount: billAmount,
-        bonus_delta: bonusDelta,
-        stamp_delta: stampDelta
+        p_restaurant_id: restaurant.id,
+        p_customer_id: customerId,
+        p_amount: billAmount,
+        p_stamp_delta: 1
       })
     });
-
-    return {
-      statusCode: 200,
-      headers: JSON_HEADERS,
-      body: JSON.stringify({
-        card: currentCard,
-        stamps_count: currentCard.stamps_count,
-        reward_unlocked: currentCard.reward_unlocked,
-        total_spent: currentCard.total_spent,
-        bonus_balance: currentCard.bonus_balance
-      })
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ error: 'Server xətası: ' + err.message })
-    };
+    return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(result) };
+  } catch (error) {
+    console.error('add-stamp error:', error);
+    return { statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Server xətası.' }) };
   }
 };
+
+exports.handler = secureHandler('add-stamp', { limit: 30 }, exports.handler);

@@ -1,228 +1,61 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const { getBonusBalance, getStampCount, getStampGoal, getStoredBonusBalance, getTotalSpent, normalizeCard, roundMoney } = require('../lib/loyalty');
-const { parseJsonObject } = require('../lib/request');
+const { constantTimeEqual, parseJsonObject } = require('../lib/request');
+const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
+const { secureHandler } = require('../lib/security');
 
-function getSupabaseConfig() {
-  const rawUrl = (process.env.SUPABASE_URL || '').trim();
-  const markdownMatch = rawUrl.match(/\((https?:\/\/[^)]+)\)/);
-  const url = (markdownMatch ? markdownMatch[1] : rawUrl)
-    .replace(/^\[|\]$/g, '')
-    .replace(/\/+$/, '');
-  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const CUSTOMER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-  if (!url || !key) {
-    throw new Error('SUPABASE_URL və ya SUPABASE_SERVICE_ROLE_KEY təyin edilməyib.');
-  }
-  return { url, key };
-}
-
-async function sbFetch(url, key, path, options = {}) {
-  const res = await fetch(`${url}/rest/v1/${path}`, {
-    ...options,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
-  });
-
-  const text = await res.text();
-  let data = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { message: text };
-    }
-  }
-
-  if (!res.ok) {
-    throw new Error((data && (data.message || data.error)) || `Supabase xətası (${res.status})`);
-  }
-  return data;
-}
-
-exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ error: 'Method Not Allowed' })
-    };
-  }
-
+exports.handler = async event => {
   try {
     const body = parseJsonObject(event.body);
     if (!body) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' })
-      };
-    }
-    const slug = String(body.slug || 'kaya').trim().toLowerCase();
-    const visitorToken = String(body.visitorToken || '').trim();
-    const pin = String(body.pin || '').trim();
-
-    if (!visitorToken) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'visitorToken tapılmadı.' })
-      };
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
 
-    if (!/^\d{4}$/.test(pin)) {
-      return {
-        statusCode: 400,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'PİN kod tam 4 rəqəmdən ibarət olmalıdır.' })
-      };
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : 'kaya';
+    const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
+    const customerId = typeof body.customer_id === 'string'
+      ? body.customer_id.trim()
+      : typeof body.visitorToken === 'string' ? body.visitorToken.trim() : '';
+    if (!/^[a-z0-9-]{1,80}$/.test(slug) || !/^\d{4}$/.test(pin) || !CUSTOMER_ID_PATTERN.test(customerId)) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
 
     const { url, key } = getSupabaseConfig();
-
     const restaurants = await sbFetch(
       url,
       key,
-      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,slug,name,stamp_goal,pin_code,bonus_mode,bonus_fixed_amount,bonus_percent`
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code`
     );
-
     const restaurant = restaurants?.[0];
     if (!restaurant) {
-      return {
-        statusCode: 404,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Restoran tapılmadı.' })
-      };
+      return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran tapılmadı.' }) };
+    }
+    if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), pin)) {
+      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod yanlışdır.' }) };
     }
 
-    if (String(restaurant.pin_code || '').trim() !== pin) {
-      return {
-        statusCode: 401,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Kassir PİN kodu yanlışdır.' })
-      };
-    }
-
-    const cards = await sbFetch(
-      url,
-      key,
-      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(visitorToken)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance`
-    );
-
-    const existingCard = cards?.[0];
-    if (!existingCard || getStampCount(existingCard) <= 0) {
-      return {
-        statusCode: 422,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Ləğv ediləcək xal yoxdur.' })
-      };
-    }
-    const card = normalizeCard(restaurant, existingCard);
-
-    const lastTxs = await sbFetch(
-      url,
-      key,
-      `card_transactions?card_id=eq.${encodeURIComponent(card.id)}&tx_type=eq.stamp&order=created_at.desc&limit=1&select=id,bill_amount,bonus_delta,stamp_delta`
-    );
-    const lastTx = lastTxs?.[0] || null;
-    if (!lastTx?.id) {
-      return {
-        statusCode: 422,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Geri alınacaq son möhür əməliyyatı tapılmadı.' })
-      };
-    }
-
-    const deductedAmount = Number(lastTx.bill_amount);
-    if (!Number.isFinite(deductedAmount) || deductedAmount < 0) {
-      return {
-        statusCode: 422,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Son möhürün hesab məbləği etibarsızdır.' })
-      };
-    }
-
-    const bonusDelta = Number(lastTx.bonus_delta);
-    const stampDelta = Number(lastTx.stamp_delta);
-    if (!Number.isFinite(bonusDelta) || bonusDelta < 0 || ![0, 1].includes(stampDelta)) {
-      return {
-        statusCode: 422,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Son əməliyyatın bonus və möhür məlumatı etibarsızdır.' })
-      };
-    }
-
-    const goal = getStampGoal(restaurant);
-    const currentStamps = getStampCount(card);
-    if (stampDelta > currentStamps) {
-      return {
-        statusCode: 422,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Son əməliyyatın möhür sayı kartla uyğun gəlmir.' })
-      };
-    }
-    const pendingFixedBonus = Math.max(0, roundMoney(card.bonus_balance - getStoredBonusBalance(existingCard)));
-    const nextStamps = currentStamps - stampDelta;
-    const nextTotalSpent = Math.max(0, roundMoney(getTotalSpent(card) - deductedAmount));
-    const unlocked = nextStamps >= goal;
-    let nextBonusBalance = Math.max(0, roundMoney(getBonusBalance(restaurant, card) - bonusDelta));
-    if (!unlocked && pendingFixedBonus > 0) {
-      nextBonusBalance = Math.max(0, roundMoney(nextBonusBalance - pendingFixedBonus));
-    }
-    const preservePendingUnlock = unlocked
-      && pendingFixedBonus > 0
-      && existingCard.reward_unlocked !== true;
-    const storedBonusBalance = preservePendingUnlock
-      ? Math.max(0, roundMoney(nextBonusBalance - pendingFixedBonus))
-      : nextBonusBalance;
-
-    const updated = await sbFetch(
-      url,
-      key,
-      `loyalty_cards?id=eq.${encodeURIComponent(card.id)}`,
-      {
-        method: 'PATCH',
-        headers: { Prefer: 'return=representation' },
-        body: JSON.stringify({
-          stamps_count: nextStamps,
-          reward_unlocked: preservePendingUnlock ? false : unlocked,
-          total_spent: nextTotalSpent,
-          bonus_balance: storedBonusBalance
-        })
-      }
-    );
-    if (!updated?.[0]) throw new Error('Kart yenilənmədi.');
-
-    if (lastTx?.id) {
-      await sbFetch(
-        url,
-        key,
-        `card_transactions?id=eq.${encodeURIComponent(lastTx.id)}`,
-        { method: 'DELETE' }
-      );
-    }
-
-    const updatedCard = normalizeCard(restaurant, updated[0]);
-
+    const result = await sbFetch(url, key, 'rpc/apply_customer_stamp_transaction', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_restaurant_id: restaurant.id,
+        p_customer_id: customerId,
+        p_amount: 0,
+        p_stamp_delta: -1
+      })
+    });
+    return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(result) };
+  } catch (error) {
+    console.error('undo-stamp error:', error);
+    const clientError = /Müştəri tapılmadı|Möhür silmək üçün|Müştəri kartı tapılmadı|Restoran tapılmadı/i.test(error.message || '');
     return {
-      statusCode: 200,
+      statusCode: clientError ? 422 : 500,
       headers: JSON_HEADERS,
       body: JSON.stringify({
-        card: updatedCard,
-        stamps_count: updatedCard.stamps_count,
-        reward_unlocked: updatedCard.reward_unlocked,
-        total_spent: updatedCard.total_spent,
-        bonus_balance: updatedCard.bonus_balance
+        error: clientError ? error.message : 'Möhür əməliyyatını geri almaq mümkün olmadı.'
       })
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ error: 'Server xətası: ' + err.message })
     };
   }
 };
+
+exports.handler = secureHandler('undo-stamp', { limit: 20 }, exports.handler);

@@ -1,146 +1,68 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const { getStampGoal, normalizeCard } = require('../lib/loyalty');
-const { parseJsonObject } = require('../lib/request');
+const { constantTimeEqual, parseJsonObject } = require('../lib/request');
+const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
+const { secureHandler } = require('../lib/security');
 
-function getSupabaseConfig() {
-  const rawUrl = (process.env.SUPABASE_URL || '').trim();
-  const markdownMatch = rawUrl.match(/\((https?:\/\/[^)]+)\)/);
-  const url = (markdownMatch ? markdownMatch[1] : rawUrl)
-    .replace(/^\[|\]$/g, '')
-    .replace(/\/+$/, '');
-  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const CUSTOMER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-  if (!url || !key) {
-    throw new Error('SUPABASE_URL və ya SUPABASE_SERVICE_ROLE_KEY təyin edilməyib.');
-  }
-  return { url, key };
-}
-
-async function sbFetch(url, key, path, options = {}) {
-  const res = await fetch(`${url}/rest/v1/${path}`, {
-    ...options,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
-  });
-
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!res.ok) {
-    throw new Error((data && (data.message || data.error)) || `Supabase xətası (${res.status})`);
-  }
-  return data;
-}
-
-exports.handler = async (event) => {
+exports.handler = async event => {
   try {
-    if (event.httpMethod !== 'POST') {
-      return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Method not allowed' }) };
-    }
-
     const body = parseJsonObject(event.body);
     if (!body) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
-    const slug = String(body.slug || 'kaya').trim().toLowerCase();
-    const visitorToken = String(body.visitorToken || '').trim();
-    const pin = String(body.pin || '').trim();
 
-    if (!visitorToken || !pin) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Məlumat natamamdır.' }) };
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : 'kaya';
+    const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
+    const customerId = typeof body.customer_id === 'string'
+      ? body.customer_id.trim()
+      : typeof body.visitorToken === 'string' ? body.visitorToken.trim() : '';
+    const amountInput = body.amount;
+    const amount = typeof amountInput === 'number' || typeof amountInput === 'string'
+      ? Number(amountInput)
+      : NaN;
+    const redeemAmount = Number.isFinite(amount) ? Math.round((amount + Number.EPSILON) * 100) / 100 : NaN;
+
+    if (!/^[a-z0-9-]{1,80}$/.test(slug) || !/^\d{4}$/.test(pin) || !CUSTOMER_ID_PATTERN.test(customerId)) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
-
-    if (!/^\d{4}$/.test(pin)) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod tam 4 rəqəmdən ibarət olmalıdır.' }) };
+    if (!Number.isFinite(redeemAmount) || redeemAmount <= 0 || redeemAmount > 99999999.99 ||
+      Math.abs(amount - redeemAmount) > 0.00000001) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'İstifadə ediləcək bonus məbləğini düzgün daxil edin.' }) };
     }
 
     const { url, key } = getSupabaseConfig();
-
     const restaurants = await sbFetch(
       url,
       key,
-      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=*`
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code`
     );
     const restaurant = restaurants?.[0];
-
     if (!restaurant) {
       return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran tapılmadı.' }) };
     }
-
-    if (pin !== String(restaurant.pin_code || '').trim()) {
-      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Kassir PİN kodu yanlışdır.' }) };
+    if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), pin)) {
+      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod yanlışdır.' }) };
     }
 
-    const cards = await sbFetch(
-      url,
-      key,
-      `loyalty_cards?restaurant_id=eq.${restaurant.id}&visitor_token=eq.${encodeURIComponent(visitorToken)}&select=*`
-    );
-    const storedCard = cards?.[0];
-
-    if (!storedCard) {
-      return { statusCode: 422, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Aktiv bonus yoxdur.' }) };
-    }
-
-    const card = normalizeCard(restaurant, storedCard);
-    if (card.stamps_count < getStampGoal(restaurant)) {
-      return { statusCode: 422, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Aktiv bonus yoxdur.' }) };
-    }
-
-    const redeemedBonus = card.bonus_balance;
-
-    const goal = getStampGoal(restaurant);
-    const updatedCards = await sbFetch(
-      url,
-      key,
-      `loyalty_cards?id=eq.${encodeURIComponent(card.id)}&stamps_count=gte.${goal}`,
-      {
-        method: 'PATCH',
-        headers: { Prefer: 'return=representation' },
-        body: JSON.stringify({
-          stamps_count: 0,
-          reward_unlocked: false,
-          bonus_balance: 0,
-          total_spent: 0
-        })
-      }
-    );
-    if (!updatedCards?.[0]) {
-      return { statusCode: 422, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Aktiv bonus yoxdur.' }) };
-    }
-
-    await sbFetch(url, key, 'card_transactions', {
+    const result = await sbFetch(url, key, 'rpc/redeem_customer_bonus', {
       method: 'POST',
       body: JSON.stringify({
-        restaurant_id: restaurant.id,
-        card_id: card.id,
-        visitor_token: visitorToken,
-        tx_type: 'redeem',
-        bill_amount: 0,
-        bonus_delta: -Math.abs(redeemedBonus)
+        p_restaurant_id: restaurant.id,
+        p_customer_id: customerId,
+        p_amount: redeemAmount
       })
     });
-
+    return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(result) };
+  } catch (error) {
+    console.error('redeem-bonus error:', error);
+    const clientError = /Aktiv bonus yoxdur|bonus balansından çox|Müştəri kartı tapılmadı|Restoran tapılmadı/i.test(error.message || '');
     return {
-      statusCode: 200,
+      statusCode: clientError ? 422 : 500,
       headers: JSON_HEADERS,
-      body: JSON.stringify({
-        message: `${restaurant.reward_text || 'BONUS'} istifadə edildi və dairələr sıfırlandı!`,
-        stamps_count: 0,
-        reward_unlocked: false,
-        bonus_balance: 0,
-        total_spent: 0
-      })
-    };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ error: 'Server xətası: ' + err.message })
+      body: JSON.stringify({ error: clientError ? error.message : 'Bonus əməliyyatı tamamlanmadı.' })
     };
   }
 };
+
+exports.handler = secureHandler('redeem-bonus', { limit: 20 }, exports.handler);

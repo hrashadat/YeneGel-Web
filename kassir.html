@@ -44,6 +44,28 @@
     .app { width: min(100%, 760px); margin: 0 auto; display: grid; gap: 16px; }
     .topbar, .top-actions, .tabs, .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .topbar { min-height: 48px; }
+    .top-actions { flex-direction: column; align-items: flex-end; gap: 3px; }
+    .theme-switch {
+      display: inline-flex;
+      flex: 0 0 auto;
+      padding: 3px;
+      gap: 3px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--surface);
+      box-shadow: 0 3px 12px rgba(24, 24, 22, .04);
+    }
+    .theme-btn {
+      padding: 7px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .theme-btn.active { background: var(--accent); color: var(--accent-text); }
     .brand strong { display: block; font-size: 18px; }
     .brand span { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: 1.6px; }
     .card { padding: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); }
@@ -185,7 +207,15 @@
         <span>KASSİR VƏ ADMIN</span>
       </div>
       <div class="top-actions">
-        <button id="themeBtn" class="btn" type="button">Dark mode</button>
+        <div class="theme-switch" role="group" aria-label="Dil seçimi">
+          <button type="button" class="theme-btn active" data-language="az" aria-pressed="true">AZ</button>
+          <button type="button" class="theme-btn" data-language="ru" aria-pressed="false">RU</button>
+          <button type="button" class="theme-btn" data-language="en" aria-pressed="false">EN</button>
+        </div>
+        <div class="theme-switch" role="group" aria-label="Tema seçimi">
+          <button id="lightThemeBtn" type="button" class="theme-btn active" aria-pressed="true">Light</button>
+          <button id="darkThemeBtn" type="button" class="theme-btn" aria-pressed="false">Dark</button>
+        </div>
         <a id="customerPageLink" class="btn" href="index.html">Müştəri səhifəsi</a>
       </div>
     </header>
@@ -219,10 +249,17 @@
           <p id="customerPhone"></p>
           <p id="customerId"></p>
           <div id="stampCount" class="stamp-count"></div>
+          <div id="customerBonusBalance" class="stamp-count"></div>
           <div class="field">
             <label for="amountInput">Yeməyin məbləği (AZN)</label>
             <input id="amountInput" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="məs: 25.00" />
           </div>
+          <section id="bonusRedeemPanel" class="field hidden">
+            <label for="bonusRedeemAmountInput">Nə qədər manat bonus işlətmək istəyirsiniz?</label>
+            <input id="bonusRedeemAmountInput" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" />
+            <small id="bonusRedeemHint"></small>
+            <button id="redeemBonusBtn" class="btn btn-primary" type="button">Bonus istifadə et</button>
+          </section>
           <div class="actions">
             <button id="addStampBtn" class="btn btn-primary" type="button">+ Möhür əlavə et</button>
           </div>
@@ -262,8 +299,8 @@
               <input id="stampGoalInput" class="input" type="number" min="1" max="20" required />
             </div>
             <div class="field">
-              <label for="cashierPinInput">Kassir PİN kodu (4 rəqəm)</label>
-              <input id="cashierPinInput" class="input" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required />
+              <label for="cashierPinInput">Kassir PİN kodu (dəyişmək üçün yeni 4 rəqəm daxil edin)</label>
+              <input id="cashierPinInput" class="input" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" />
             </div>
             <div class="field">
               <label for="bonusModeInput">Bonus rejimi</label>
@@ -343,6 +380,7 @@
     </section>
   </div>
 
+  <script src="translations.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
     (function () {
@@ -361,6 +399,7 @@
       const removeStampPinInput = document.getElementById('removeStampPinInput');
       const removeStampMsg = document.getElementById('removeStampMsg');
       const confirmRemoveStampBtn = document.getElementById('confirmRemoveStampBtn');
+      const t = (text, replacements) => window.YeneGelI18n.t(text, replacements);
       pinScreen.classList.remove('hidden');
       workspace.classList.add('hidden');
       let cashierPin = '';
@@ -375,11 +414,44 @@
       let toastTimer = null;
       const clearedScanners = new WeakSet();
       let adminCode = '';
+      let lastScannedCard = null;
       document.getElementById('customerPageLink').href = `index.html?slug=${encodeURIComponent(slug)}`;
 
-      document.getElementById('themeBtn').addEventListener('click', event => {
-        const isLight = document.body.classList.toggle('light-mode');
-        event.currentTarget.textContent = isLight ? 'Dark mode' : 'Light mode';
+      const applyTheme = mode => {
+        const isLight = mode !== 'dark';
+        document.body.classList.toggle('light-mode', isLight);
+        document.getElementById('lightThemeBtn').classList.toggle('active', isLight);
+        document.getElementById('darkThemeBtn').classList.toggle('active', !isLight);
+        document.getElementById('lightThemeBtn').setAttribute('aria-pressed', String(isLight));
+        document.getElementById('darkThemeBtn').setAttribute('aria-pressed', String(!isLight));
+      };
+      document.getElementById('lightThemeBtn').addEventListener('click', () => applyTheme('light'));
+      document.getElementById('darkThemeBtn').addEventListener('click', () => applyTheme('dark'));
+      applyTheme('light');
+
+      window.addEventListener('yenegel-language-change', () => {
+        document.getElementById('bonusValueLabel').textContent =
+          document.getElementById('bonusModeInput').value === 'percent'
+            ? t('Bonus faizi (%)')
+            : t('Bonus məbləği (AZN)');
+        document.getElementById('adminSlug').textContent = t('Restoran kodu: {{slug}}', { slug });
+        document.querySelectorAll('.msg').forEach(element => {
+          if (element.textContent) element.textContent = t(element.textContent);
+        });
+        if (operationToastText.textContent) operationToastText.textContent = t(operationToastText.textContent);
+        if (selectedCustomer && lastScannedCard) {
+          renderScannedCustomer(lastScannedCard, false);
+        }
+        document.querySelectorAll('#customerRows tr').forEach(row => {
+          const amount = row.dataset.bonusCycle;
+          const carryover = row.dataset.bonusCarryover;
+          if (amount !== undefined && carryover !== undefined) {
+            row.children[3].textContent = t(
+              '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)',
+              { amount, carryover }
+            );
+          }
+        });
       });
 
       async function requestJson(url, options) {
@@ -391,9 +463,15 @@
           }, 120);
         }
         try {
+          if (window.location.protocol === 'file:') {
+            throw new Error(t('Səhifəni birbaşa fayl kimi açmaq olmaz. Netlify Dev ilə serverdən açın.'));
+          }
           const response = await fetch(url, options);
           const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.error || 'Sorğu uğursuz oldu.');
+          if (data.code === 'RATE_LIMIT_UNAVAILABLE') {
+            throw new Error(t('Təhlükəsizlik xidməti hazır deyil. Supabase mühit dəyişənlərini yoxlayın və tələb olunan SQL migration-ı tətbiq edin.'));
+          }
+          if (!response.ok) throw new Error(t(data.error || 'Sorğu uğursuz oldu.'));
           return data;
         } finally {
           pendingLoadingRequests = Math.max(0, pendingLoadingRequests - 1);
@@ -408,12 +486,12 @@
       }
 
       function showMessage(element, message, error) {
-        element.textContent = message;
+        element.textContent = t(message);
         element.className = `msg${message ? (error ? ' err' : ' ok') : ''}`;
       }
 
       function showToast(message) {
-        operationToastText.textContent = message;
+        operationToastText.textContent = t(message);
         operationToast.classList.add('visible');
         if (toastTimer !== null) window.clearTimeout(toastTimer);
         toastTimer = window.setTimeout(() => {
@@ -463,7 +541,7 @@
           pinScreen.classList.add('hidden');
           workspace.classList.remove('hidden');
           document.getElementById('adminRestName').textContent = restaurant.name || 'Restoran ayarları';
-          document.getElementById('adminSlug').textContent = `Restoran kodu: ${slug}`;
+          document.getElementById('adminSlug').textContent = t('Restoran kodu: {{slug}}', { slug });
           await startScanner();
         } catch (error) {
           showMessage(pinMsg, error.message || 'Serverlə əlaqə alınmadı.', true);
@@ -516,18 +594,43 @@
         showMessage(document.getElementById('scannerMsg'), '', false);
       }
 
-      function renderScannedCustomer(card) {
+      function renderScannedCustomer(card, resetInputs = true) {
+        lastScannedCard = card;
         document.getElementById('customerName').textContent =
           selectedCustomer.account_name || [selectedCustomer.first_name, selectedCustomer.last_name].filter(Boolean).join(' ');
         const phoneElement = document.getElementById('customerPhone');
-        phoneElement.textContent = selectedCustomer.phone ? `Telefon: ${selectedCustomer.phone}` : '';
+        phoneElement.textContent = selectedCustomer.phone ? t('Telefon: {{phone}}', { phone: selectedCustomer.phone }) : '';
         phoneElement.classList.toggle('hidden', !selectedCustomer.phone);
-        document.getElementById('customerId').textContent = `ID: ${selectedCustomer.id}`;
-        document.getElementById('stampCount').textContent =
-          `${Number(card.stamps_count || 0)} / ${Number(restaurant.stamp_goal || 5)} möhür`;
+        document.getElementById('customerId').textContent = t('ID: {{id}}', { id: selectedCustomer.id });
+        const stamps = Number(card.stamps_count || 0);
+        const goal = Number(restaurant.stamp_goal || 5);
+        document.getElementById('stampCount').textContent = t('{{current}} / {{goal}} möhür', {
+          current: stamps,
+          goal
+        });
+        const currentBonus = Number(card.bonus_cycle_balance ?? card.bonus_balance ?? 0);
+        const carryover = Number(card.bonus_carryover || 0);
+        const totalBonus = currentBonus + carryover;
+        document.getElementById('customerBonusBalance').textContent = t(
+          '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)',
+          { amount: currentBonus.toFixed(2), carryover: carryover.toFixed(2) }
+        );
+        const bonusPanel = document.getElementById('bonusRedeemPanel');
+        const redeemButton = document.getElementById('redeemBonusBtn');
+        const redeemInput = document.getElementById('bonusRedeemAmountInput');
+        const hasBonus = Number.isFinite(totalBonus) && totalBonus > 0;
+        bonusPanel.classList.toggle('hidden', !hasBonus);
+        redeemInput.max = hasBonus ? totalBonus.toFixed(2) : '';
+        if (resetInputs) redeemInput.value = '';
+        redeemButton.disabled = stamps < goal;
+        document.getElementById('bonusRedeemHint').textContent = stamps < goal && hasBonus
+          ? t('Bonus işlətmək üçün möhür hədəfi tamamlanmalıdır.')
+          : '';
         document.getElementById('scannedCustomer').classList.remove('hidden');
-        document.getElementById('amountInput').value = '';
-        showMessage(document.getElementById('operationMsg'), '', false);
+        if (resetInputs) {
+          document.getElementById('amountInput').value = '';
+          showMessage(document.getElementById('operationMsg'), '', false);
+        }
       }
 
       async function startScanner() {
@@ -679,6 +782,38 @@
           confirmRemoveStampBtn.disabled = false;
         }
       });
+      document.getElementById('redeemBonusBtn').addEventListener('click', async () => {
+        if (!selectedCustomer) return;
+        const input = document.getElementById('bonusRedeemAmountInput');
+        const amount = Number(input.value);
+        const button = document.getElementById('redeemBonusBtn');
+        const message = document.getElementById('operationMsg');
+        if (!Number.isFinite(amount) || amount <= 0) {
+          showMessage(message, 'İstifadə ediləcək bonus məbləğini düzgün daxil edin.', true);
+          return;
+        }
+        button.disabled = true;
+        try {
+          const data = await requestJson('/.netlify/functions/redeem-bonus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              slug,
+              pin: cashierPin,
+              customer_id: selectedCustomer.id,
+              amount
+            })
+          });
+          renderScannedCustomer(data.card);
+          notifyCustomerCardUpdated(selectedCustomer.id);
+          showMessage(message, 'Bonusu uğurla işlətdik.', false);
+          showToast('Bonusu uğurla işlətdik.');
+        } catch (error) {
+          showMessage(message, error.message || 'Bonus əməliyyatı tamamlanmadı.', true);
+        } finally {
+          button.disabled = false;
+        }
+      });
       document.getElementById('scanNextBtn').addEventListener('click', async () => {
         await prepareForNextCustomer();
       });
@@ -690,7 +825,7 @@
         document.getElementById('bonusValueInput').value = document.getElementById('bonusModeInput').value === 'percent'
           ? Number(data.bonus_percent ?? 10) : Number(data.bonus_fixed_amount ?? 10);
         document.getElementById('bonusValueLabel').textContent = document.getElementById('bonusModeInput').value === 'percent'
-          ? 'Bonus faizi (%)' : 'Bonus məbləği (AZN)';
+          ? t('Bonus faizi (%)') : t('Bonus məbləği (AZN)');
         document.getElementById('rewardTextInput').value = data.reward_text || '';
         document.getElementById('restaurantNameInput').value = data.name || '';
         document.getElementById('aboutInput').value = data.about || '';
@@ -701,7 +836,7 @@
       }
       document.getElementById('bonusModeInput').addEventListener('change', event => {
         document.getElementById('bonusValueLabel').textContent = event.target.value === 'percent'
-          ? 'Bonus faizi (%)' : 'Bonus məbləği (AZN)';
+          ? t('Bonus faizi (%)') : t('Bonus məbləği (AZN)');
       });
 
       async function loadCustomers() {
@@ -716,12 +851,21 @@
         rows.replaceChildren();
         data.customers.forEach(customer => {
           const row = document.createElement('tr');
+          const bonusCycle = Number(customer.card.bonus_cycle_balance ?? customer.card.bonus_balance ?? 0).toFixed(2);
+          const bonusCarryover = Number(customer.card.bonus_carryover || 0).toFixed(2);
+          row.dataset.bonusCycle = bonusCycle;
+          row.dataset.bonusCarryover = bonusCarryover;
           const values = [
             customer.account_name || [customer.first_name, customer.last_name].filter(Boolean).join(' '),
             customer.phone || '—',
             String(customer.card.stamps_count || 0),
-            `${Number(customer.card.bonus_balance || 0).toFixed(2)} AZN`,
-            customer.created_at ? new Date(customer.created_at).toLocaleDateString('az-AZ') : '—'
+            t('{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)', {
+              amount: bonusCycle,
+              carryover: bonusCarryover
+            }),
+            customer.created_at ? new Date(customer.created_at).toLocaleDateString(
+              window.YeneGelI18n.getLanguage() === 'ru' ? 'ru-RU' : window.YeneGelI18n.getLanguage() === 'en' ? 'en-US' : 'az-AZ'
+            ) : '—'
           ];
           values.forEach(value => {
             const cell = document.createElement('td');
@@ -730,7 +874,9 @@
           });
           rows.appendChild(row);
         });
-        showMessage(message, data.customers.length ? `${data.customers.length} müştəri göstərilir.` : 'Hələ müştəri yoxdur.', false);
+        showMessage(message, data.customers.length
+          ? t('{{count}} müştəri göstərilir.', { count: data.customers.length })
+          : 'Hələ müştəri yoxdur.', false);
       }
 
       document.getElementById('adminLoginForm').addEventListener('submit', async event => {
@@ -784,7 +930,7 @@
           accessCode: adminCode,
           current_pin: cashierPin,
           stamp_goal: Number(document.getElementById('stampGoalInput').value),
-          cashier_pin: document.getElementById('cashierPinInput').value.trim(),
+          cashier_pin: document.getElementById('cashierPinInput').value.trim() || cashierPin,
           bonus_mode: bonusMode,
           bonus_fixed_amount: bonusMode === 'fixed' ? bonusValue : undefined,
           bonus_percent: bonusMode === 'percent' ? bonusValue : undefined,

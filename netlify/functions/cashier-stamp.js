@@ -1,6 +1,7 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const { parseJsonObject } = require('../lib/request');
+const { constantTimeEqual, isValidRestaurantSlug, isValidUuid, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
+const { secureHandler } = require('../lib/security');
 
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') {
@@ -11,21 +12,25 @@ exports.handler = async event => {
     if (!body) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
-    const slug = String(body.slug || 'kaya').trim().toLowerCase();
-    const pin = String(body.pin || '').trim();
-    const customerId = String(body.customer_id || '').trim();
-    const stampDelta = Number(body.stamp_delta);
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : 'kaya';
+    const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
+    const customerId = typeof body.customer_id === 'string' ? body.customer_id.trim() : '';
+    const stampDelta = typeof body.stamp_delta === 'number' || typeof body.stamp_delta === 'string'
+      ? Number(body.stamp_delta)
+      : NaN;
 
+    if (!isValidRestaurantSlug(slug) || !isValidUuid(customerId)) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Müştəri QR kodu etibarsızdır.' }) };
+    }
     if (!/^\d{4}$/.test(pin)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod 4 rəqəm olmalıdır.' }) };
-    }
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(customerId)) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Müştəri QR kodu etibarsızdır.' }) };
     }
     if (![-1, 1].includes(stampDelta)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Möhür əməliyyatı etibarsızdır.' }) };
     }
-    const amount = stampDelta === -1 ? 0 : Number(body.amount);
+    const amount = stampDelta === -1
+      ? 0
+      : (typeof body.amount === 'number' || typeof body.amount === 'string') ? Number(body.amount) : NaN;
     const billAmount = Number.isFinite(amount)
       ? Math.round((amount + Number.EPSILON) * 100) / 100
       : NaN;
@@ -48,7 +53,7 @@ exports.handler = async event => {
     if (!restaurant) {
       return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran tapılmadı.' }) };
     }
-    if (String(restaurant.pin_code || '').trim() !== pin) {
+    if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), pin)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod yanlışdır.' }) };
     }
 
@@ -66,9 +71,12 @@ exports.handler = async event => {
       headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
       body: JSON.stringify(result)
     };
+
   } catch (err) {
     const statusCode = /Müştəri tapılmadı|Möhür silmək üçün|Kart tapılmadı/.test(err.message) ? 422 : 500;
     console.error('cashier-stamp error:', err);
     return { statusCode, headers: JSON_HEADERS, body: JSON.stringify({ error: err.message }) };
   }
 };
+
+exports.handler = secureHandler('cashier-stamp', { limit: 30 }, exports.handler);

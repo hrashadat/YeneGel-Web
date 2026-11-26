@@ -1,6 +1,7 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const { parseJsonObject } = require('../lib/request');
+const { constantTimeEqual, isBoundedString, isValidRestaurantSlug, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
+const { secureHandler } = require('../lib/security');
 
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') {
@@ -11,10 +12,10 @@ exports.handler = async event => {
     if (!body) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
-    const slug = String(body.slug || '').trim().toLowerCase();
-    const accessCode = String(body.accessCode || '').trim();
-    const cashierPin = String(body.pin || '').trim();
-    if (!slug || !accessCode || !/^\d{4}$/.test(cashierPin)) {
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
+    const accessCode = typeof body.accessCode === 'string' ? body.accessCode.trim() : '';
+    const cashierPin = typeof body.pin === 'string' ? body.pin.trim() : '';
+    if (!isValidRestaurantSlug(slug) || !accessCode || !isBoundedString(accessCode, 256) || !/^\d{4}$/.test(cashierPin)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran, admin kodu və kassir PİN kodu tələb olunur.' }) };
     }
 
@@ -28,10 +29,10 @@ exports.handler = async event => {
     if (!restaurant) {
       return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran tapılmadı.' }) };
     }
-    if (!restaurant.admin_code || String(restaurant.admin_code).trim() !== accessCode) {
+    if (!constantTimeEqual(String(restaurant.admin_code || '').trim(), accessCode)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Admin giriş kodu yanlışdır.' }) };
     }
-    if (String(restaurant.pin_code || '').trim() !== cashierPin) {
+    if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), cashierPin)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Kassir PİN kodu yanlışdır.' }) };
     }
 
@@ -43,7 +44,7 @@ exports.handler = async event => {
     const cards = await sbFetch(
       url,
       key,
-      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&select=visitor_token,stamps_count,bonus_balance,total_spent`
+      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&select=visitor_token,stamps_count,bonus_balance,bonus_carryover,total_spent`
     );
     const cardsByCustomerId = new Map((cards || []).map(card => [card.visitor_token, card]));
     return {
@@ -52,12 +53,20 @@ exports.handler = async event => {
       body: JSON.stringify({
         customers: (customers || []).map(customer => ({
           ...customer,
-          card: cardsByCustomerId.get(customer.id) || { stamps_count: 0, bonus_balance: 0, total_spent: 0 }
+          card: cardsByCustomerId.get(customer.id) || {
+            stamps_count: 0,
+            bonus_balance: 0,
+            bonus_carryover: 0,
+            total_spent: 0
+          }
         }))
       })
     };
+
   } catch (err) {
     console.error('admin-customers error:', err);
     return { statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Server xətası: ' + err.message }) };
   }
 };
+
+exports.handler = secureHandler('admin-customers', { limit: 30 }, exports.handler);
