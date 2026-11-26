@@ -1,7 +1,7 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const { ensureCustomerCard } = require('../lib/customer-cards');
 const { parseJsonObject } = require('../lib/request');
-const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
+const { getSupabaseConfig, getSupabaseErrorMessage, sbFetch } = require('../lib/supabase');
 
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') {
@@ -82,6 +82,10 @@ exports.handler = async event => {
     };
   } catch (err) {
     console.error('customer-register error:', err);
-    return { statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Server xətası: ' + err.message }) };
+    return {
+      statusCode: 500,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ error: getSupabaseErrorMessage(err), code: err.code || 'SERVER_ERROR' })
+    };
   }
 };
