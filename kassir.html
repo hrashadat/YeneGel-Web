@@ -255,10 +255,8 @@
             <input id="amountInput" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="məs: 25.00" />
           </div>
           <section id="bonusRedeemPanel" class="field hidden">
-            <label for="bonusRedeemAmountInput">Nə qədər manat bonus işlətmək istəyirsiniz?</label>
-            <input id="bonusRedeemAmountInput" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" />
+            <button id="openBonusRedeemBtn" class="btn btn-primary" type="button">Bonus istifadə et</button>
             <small id="bonusRedeemHint"></small>
-            <button id="redeemBonusBtn" class="btn btn-primary" type="button">Bonus istifadə et</button>
           </section>
           <div class="actions">
             <button id="addStampBtn" class="btn btn-primary" type="button">+ Möhür əlavə et</button>
@@ -379,6 +377,23 @@
       </form>
     </section>
   </div>
+  <div id="bonusRedeemDialog" class="confirmation-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="bonusRedeemTitle">
+    <section class="confirmation-panel">
+      <h2 id="bonusRedeemTitle" class="confirmation-title">Bonus istifadə et</h2>
+      <form id="bonusRedeemForm">
+        <div class="field">
+          <label for="bonusRedeemAmountInput">Nə qədər manat bonus işlətmək istəyirsiniz?</label>
+          <input id="bonusRedeemAmountInput" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" required />
+          <small id="bonusRedeemAvailable"></small>
+        </div>
+        <div id="bonusRedeemMsg" class="msg" role="status" aria-live="polite"></div>
+        <div class="confirmation-actions">
+          <button id="cancelBonusRedeemBtn" class="btn" type="button">Ləğv et</button>
+          <button id="confirmBonusRedeemBtn" class="btn btn-primary" type="submit">Davam et</button>
+        </div>
+      </form>
+    </section>
+  </div>
 
   <script src="translations.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -435,6 +450,13 @@
             ? t('Bonus faizi (%)')
             : t('Bonus məbləği (AZN)');
         document.getElementById('adminSlug').textContent = t('Restoran kodu: {{slug}}', { slug });
+        const bonusInput = document.getElementById('bonusRedeemAmountInput');
+        if (bonusInput.max) {
+          document.getElementById('bonusRedeemAvailable').textContent = t(
+            'Mövcud bonus: {{amount}} AZN',
+            { amount: bonusInput.max }
+          );
+        }
         document.querySelectorAll('.msg').forEach(element => {
           if (element.textContent) element.textContent = t(element.textContent);
         });
@@ -446,10 +468,7 @@
           const amount = row.dataset.bonusCycle;
           const carryover = row.dataset.bonusCarryover;
           if (amount !== undefined && carryover !== undefined) {
-            row.children[3].textContent = t(
-              '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)',
-              { amount, carryover }
-            );
+            row.children[3].textContent = t('{{amount}} AZN (+ {{carryover}} AZN)', { amount, carryover });
           }
         });
       });
@@ -522,6 +541,21 @@
         removeStampForm.reset();
         showMessage(removeStampMsg, '', false);
         document.getElementById('removeStampBtn').focus();
+      }
+
+      function openBonusRedeemDialog() {
+        const form = document.getElementById('bonusRedeemForm');
+        form.reset();
+        showMessage(document.getElementById('bonusRedeemMsg'), '', false);
+        document.getElementById('bonusRedeemDialog').classList.remove('hidden');
+        window.setTimeout(() => document.getElementById('bonusRedeemAmountInput').focus(), 0);
+      }
+
+      function closeBonusRedeemDialog() {
+        document.getElementById('bonusRedeemDialog').classList.add('hidden');
+        document.getElementById('bonusRedeemForm').reset();
+        showMessage(document.getElementById('bonusRedeemMsg'), '', false);
+        document.getElementById('openBonusRedeemBtn').focus();
       }
 
       pinInput.addEventListener('input', () => { pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4); });
@@ -612,15 +646,18 @@
         const carryover = Number(card.bonus_carryover || 0);
         const totalBonus = currentBonus + carryover;
         document.getElementById('customerBonusBalance').textContent = t(
-          '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)',
+          '{{amount}} AZN (+ {{carryover}} AZN)',
           { amount: currentBonus.toFixed(2), carryover: carryover.toFixed(2) }
         );
         const bonusPanel = document.getElementById('bonusRedeemPanel');
-        const redeemButton = document.getElementById('redeemBonusBtn');
+        const redeemButton = document.getElementById('openBonusRedeemBtn');
         const redeemInput = document.getElementById('bonusRedeemAmountInput');
         const hasBonus = Number.isFinite(totalBonus) && totalBonus > 0;
         bonusPanel.classList.toggle('hidden', !hasBonus);
         redeemInput.max = hasBonus ? totalBonus.toFixed(2) : '';
+        document.getElementById('bonusRedeemAvailable').textContent = hasBonus
+          ? t('Mövcud bonus: {{amount}} AZN', { amount: totalBonus.toFixed(2) })
+          : '';
         if (resetInputs) redeemInput.value = '';
         redeemButton.disabled = stamps < goal;
         document.getElementById('bonusRedeemHint').textContent = stamps < goal && hasBonus
@@ -782,13 +819,17 @@
           confirmRemoveStampBtn.disabled = false;
         }
       });
-      document.getElementById('redeemBonusBtn').addEventListener('click', async () => {
+      document.getElementById('openBonusRedeemBtn').addEventListener('click', openBonusRedeemDialog);
+      document.getElementById('cancelBonusRedeemBtn').addEventListener('click', closeBonusRedeemDialog);
+      document.getElementById('bonusRedeemForm').addEventListener('submit', async event => {
+        event.preventDefault();
         if (!selectedCustomer) return;
         const input = document.getElementById('bonusRedeemAmountInput');
         const amount = Number(input.value);
-        const button = document.getElementById('redeemBonusBtn');
-        const message = document.getElementById('operationMsg');
-        if (!Number.isFinite(amount) || amount <= 0) {
+        const button = document.getElementById('confirmBonusRedeemBtn');
+        const message = document.getElementById('bonusRedeemMsg');
+        const operationMessage = document.getElementById('operationMsg');
+        if (!Number.isFinite(amount) || amount <= 0 || amount > Number(input.max)) {
           showMessage(message, 'İstifadə ediləcək bonus məbləğini düzgün daxil edin.', true);
           return;
         }
@@ -806,7 +847,8 @@
           });
           renderScannedCustomer(data.card);
           notifyCustomerCardUpdated(selectedCustomer.id);
-          showMessage(message, 'Bonusu uğurla işlətdik.', false);
+          closeBonusRedeemDialog();
+          showMessage(operationMessage, 'Bonusu uğurla işlətdik.', false);
           showToast('Bonusu uğurla işlətdik.');
         } catch (error) {
           showMessage(message, error.message || 'Bonus əməliyyatı tamamlanmadı.', true);
@@ -859,7 +901,7 @@
             customer.account_name || [customer.first_name, customer.last_name].filter(Boolean).join(' '),
             customer.phone || '—',
             String(customer.card.stamps_count || 0),
-            t('{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)', {
+            t('{{amount}} AZN (+ {{carryover}} AZN)', {
               amount: bonusCycle,
               carryover: bonusCarryover
             }),
