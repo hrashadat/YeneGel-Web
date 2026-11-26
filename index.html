@@ -457,39 +457,6 @@
       overflow-wrap: anywhere;
     }
 
-    .admin-footer-wrap {
-      width: 100%;
-      margin-top: 0;
-      display: flex;
-      justify-content: center;
-    }
-
-    .admin-panel-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 16px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 12.5px;
-      font-weight: 700;
-      text-decoration: none;
-      box-shadow: none;
-      transition: border-color 0.2s ease, transform 0.15s ease;
-    }
-
-    .admin-panel-btn:hover {
-      border-color: var(--text-muted);
-      transform: translateY(-1px);
-    }
-
-    .admin-panel-btn::after {
-      content: " ↗";
-      margin-left: 3px;
-    }
-
     .msg:empty {
       display: none;
     }
@@ -591,9 +558,6 @@
       <div id="aboutText" class="about-desc"></div>
       <div id="aboutMeta" class="about-meta"></div>
     </section>
-    <div class="admin-footer-wrap">
-      <a id="cashierLink" class="admin-panel-btn" href="/kassir.html">Kassir / Admin paneli</a>
-    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -611,7 +575,19 @@
       const authMsg = document.getElementById('authMsg');
       const mainMsg = document.getElementById('mainMsg');
       const customerQr = document.getElementById('customerQr');
+      let cardUpdateChannel = null;
+      try {
+        if (typeof BroadcastChannel === 'function') {
+          cardUpdateChannel = new BroadcastChannel('yenegel-loyalty-card-updates');
+        }
+      } catch (error) {
+        console.warn('BroadcastChannel aktivləşdirilmədi:', error);
+      }
       let customer = null;
+      let cardPollTimer = null;
+      let cardRefreshPromise = null;
+      let cardRefreshQueued = false;
+      let lastCardSnapshot = '';
 
       const applyTheme = mode => {
         const isLight = mode !== 'dark';
@@ -621,7 +597,6 @@
       };
       document.getElementById('darkThemeBtn').addEventListener('click', () => applyTheme('dark'));
       document.getElementById('lightThemeBtn').addEventListener('click', () => applyTheme('light'));
-      document.getElementById('cashierLink').href = `/kassir.html?slug=${encodeURIComponent(slug)}`;
 
       function showMessage(element, message, isError) {
         element.textContent = message;
@@ -683,6 +658,39 @@
         document.getElementById('aboutBox').classList.remove('hidden');
       }
 
+      function getCardSnapshot(restaurant, card) {
+        return JSON.stringify({
+          restaurant: {
+            name: restaurant.name,
+            reward_text: restaurant.reward_text,
+            stamp_goal: restaurant.stamp_goal,
+            about: restaurant.about,
+            address: restaurant.address,
+            phone: restaurant.phone,
+            instagram: restaurant.instagram
+          },
+          card: {
+            stamps_count: card.stamps_count,
+            total_spent: card.total_spent,
+            bonus_balance: card.bonus_balance,
+            reward_unlocked: card.reward_unlocked
+          }
+        });
+      }
+
+      function startCardPolling() {
+        if (cardPollTimer !== null) return;
+        cardPollTimer = window.setInterval(() => {
+          if (customer && document.visibilityState === 'visible') {
+            loadCustomerCard().catch(() => {
+              mainMsg.textContent = 'Kart məlumatı yenilənə bilmədi. Yenidən yoxlanılır...';
+              mainMsg.className = 'msg err';
+              mainMsg.dataset.refreshError = 'true';
+            });
+          }
+        }, 5000);
+      }
+
       function getLegacyVisitorToken() {
         try {
           return localStorage.getItem(`yenegel_visitor_${slug}`) || '';
@@ -692,15 +700,93 @@
       }
 
       async function loadCustomerCard() {
-        const response = await fetch(
-          `/.netlify/functions/get-card?slug=${encodeURIComponent(slug)}&visitorToken=${encodeURIComponent(customer.id)}`
-        );
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.restaurant || !data.card) {
-          throw new Error(data.error || 'Müştəri kartı yüklənmədi.');
+        if (!customer) return;
+        if (cardRefreshPromise) return cardRefreshPromise;
+
+        const requestedCustomerId = customer.id;
+        const refresh = (async () => {
+          const response = await fetch(
+            `/.netlify/functions/get-card?slug=${encodeURIComponent(slug)}&visitorToken=${encodeURIComponent(requestedCustomerId)}`
+          );
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.restaurant || !data.card) {
+            throw new Error(data.error || 'Müştəri kartı yüklənmədi.');
+          }
+          if (!customer || customer.id !== requestedCustomerId) return;
+
+          const snapshot = getCardSnapshot(data.restaurant, data.card);
+          if (snapshot !== lastCardSnapshot) {
+            lastCardSnapshot = snapshot;
+            renderCard(data.restaurant, data.card);
+          }
+          if (mainMsg.dataset.refreshError === 'true') {
+            mainMsg.textContent = '';
+            mainMsg.className = 'msg';
+            delete mainMsg.dataset.refreshError;
+          }
+          startCardPolling();
+        })();
+        cardRefreshPromise = refresh;
+        try {
+          await refresh;
+        } finally {
+          if (cardRefreshPromise === refresh) {
+            cardRefreshPromise = null;
+            if (cardRefreshQueued && customer) {
+              cardRefreshQueued = false;
+              window.setTimeout(() => {
+                loadCustomerCard().catch(error => {
+                  mainMsg.textContent = error.message || 'Müştəri kartı yenilənmədi.';
+                  mainMsg.className = 'msg err';
+                  mainMsg.dataset.refreshError = 'true';
+                });
+              }, 0);
+            } else {
+              cardRefreshQueued = false;
+            }
+          }
         }
-        renderCard(data.restaurant, data.card);
       }
+
+      function refreshForSignal(signal) {
+        if (
+          customer &&
+          signal &&
+          signal.slug === slug &&
+          signal.customerId === customer.id
+        ) {
+          if (cardRefreshPromise) {
+            cardRefreshQueued = true;
+            return;
+          }
+          loadCustomerCard().catch(error => {
+            mainMsg.textContent = error.message || 'Müştəri kartı yenilənmədi.';
+            mainMsg.className = 'msg err';
+            mainMsg.dataset.refreshError = 'true';
+          });
+        }
+      }
+
+      if (cardUpdateChannel) {
+        cardUpdateChannel.addEventListener('message', event => refreshForSignal(event.data));
+      }
+      window.addEventListener('storage', event => {
+        if (event.key !== 'yenegel_loyalty_card_update' || !event.newValue) return;
+        try {
+          refreshForSignal(JSON.parse(event.newValue));
+        } catch (error) {
+          console.error('Kart yenilənmə siqnalı oxunmadı:', error);
+        }
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && customer) {
+          loadCustomerCard().catch(error => {
+            mainMsg.textContent = error.message || 'Müştəri kartı yenilənmədi.';
+            mainMsg.className = 'msg err';
+            mainMsg.dataset.refreshError = 'true';
+          });
+        }
+      });
 
       async function completeAuthentication(profile) {
         if (!profile || !profile.id) throw new Error('Müştəri məlumatı cavabda tapılmadı.');
@@ -772,6 +858,11 @@
           return;
         }
         customer = null;
+        lastCardSnapshot = '';
+        if (cardPollTimer !== null) {
+          window.clearInterval(cardPollTimer);
+          cardPollTimer = null;
+        }
         customerCard.classList.add('hidden');
         authCard.classList.remove('hidden');
         document.getElementById('aboutBox').classList.add('hidden');
@@ -795,6 +886,21 @@
       } catch (error) {
         showMessage(authMsg, 'Bu cihazda müştəri məlumatını oxumaq mümkün olmadı.', true);
       }
+
+      window.addEventListener('pagehide', () => {
+        if (cardPollTimer !== null) {
+          window.clearInterval(cardPollTimer);
+          cardPollTimer = null;
+        }
+      });
+      window.addEventListener('pageshow', () => {
+        if (customer) {
+          loadCustomerCard().catch(error => {
+            showMessage(mainMsg, error.message, true);
+            mainMsg.dataset.refreshError = 'true';
+          });
+        }
+      });
     })();
   </script>
 </body>

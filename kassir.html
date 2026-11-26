@@ -96,7 +96,7 @@
       </div>
       <div class="top-actions">
         <button id="themeBtn" class="btn" type="button">Dark mode</button>
-        <a class="btn" href="index.html">Müştəri səhifəsi</a>
+        <a id="customerPageLink" class="btn" href="index.html">Müştəri səhifəsi</a>
       </div>
     </header>
 
@@ -122,7 +122,6 @@
       <section id="cashierPanel" class="card">
         <h1 class="title">Kassir skaner paneli</h1>
         <p class="sub">Müştərinin QR kodunu kameraya göstərin. Kamera icazəsi üçün sayt HTTPS üzərindən açılmalıdır.</p>
-        <button id="startScannerBtn" class="btn btn-primary" type="button">Kameranı başladın</button>
         <div id="scannerMsg" class="msg" role="status"></div>
         <div id="reader" class="hidden"></div>
         <div id="scannedCustomer" class="customer hidden">
@@ -245,7 +244,12 @@
       let restaurant = null;
       let selectedCustomer = null;
       let scanner = null;
+      let scannerStartPromise = null;
+      let scannerGeneration = 0;
+      let scanLookupInProgress = false;
+      const clearedScanners = new WeakSet();
       let adminCode = '';
+      document.getElementById('customerPageLink').href = `index.html?slug=${encodeURIComponent(slug)}`;
 
       document.getElementById('themeBtn').addEventListener('click', event => {
         const isLight = document.body.classList.toggle('light-mode');
@@ -282,6 +286,7 @@
           workspace.classList.remove('hidden');
           document.getElementById('adminRestName').textContent = restaurant.name || 'Restoran ayarları';
           document.getElementById('adminSlug').textContent = `Restoran kodu: ${slug}`;
+          await startScanner();
         } catch (error) {
           showMessage(pinMsg, error.message || 'Serverlə əlaqə alınmadı.', true);
         } finally {
@@ -290,21 +295,35 @@
       });
 
       document.querySelectorAll('.tab').forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
           document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button));
           document.getElementById('cashierPanel').classList.toggle('hidden', button.dataset.panel !== 'cashierPanel');
           document.getElementById('adminPanel').classList.toggle('hidden', button.dataset.panel !== 'adminPanel');
+          if (button.dataset.panel === 'cashierPanel') {
+            selectedCustomer = null;
+            if (scannerStartPromise) await scannerStartPromise;
+            if (!scanner || !scanner.isScanning) await startScanner();
+          } else {
+            await stopScanner();
+          }
         });
       });
 
       async function stopScanner() {
-        if (scanner && scanner.isScanning) {
-          await scanner.stop();
-          scanner.clear();
-        }
+        scannerGeneration += 1;
+        const currentScanner = scanner;
         scanner = null;
+        if (currentScanner) {
+          if (currentScanner.isScanning || !scannerStartPromise) await disposeScanner(currentScanner);
+        }
         document.getElementById('reader').classList.add('hidden');
-        document.getElementById('startScannerBtn').classList.remove('hidden');
+      }
+
+      async function disposeScanner(scannerInstance) {
+        if (clearedScanners.has(scannerInstance)) return;
+        if (scannerInstance.isScanning) await scannerInstance.stop();
+        await scannerInstance.clear();
+        clearedScanners.add(scannerInstance);
       }
 
       async function lookupCustomer(customerId) {
@@ -330,41 +349,88 @@
         showMessage(document.getElementById('operationMsg'), '', false);
       }
 
-      document.getElementById('startScannerBtn').addEventListener('click', async () => {
-        const message = document.getElementById('scannerMsg');
-        if (typeof Html5Qrcode !== 'function') {
-          showMessage(message, 'QR skaner kitabxanası yüklənmədi. İnternet bağlantısını yoxlayın.', true);
-          return;
+      async function startScanner() {
+        if (scanner && scanner.isScanning) return;
+        if (scannerStartPromise) return scannerStartPromise;
+        const generation = ++scannerGeneration;
+        scannerStartPromise = (async () => {
+          const message = document.getElementById('scannerMsg');
+          if (typeof Html5Qrcode !== 'function') {
+            showMessage(message, 'QR skaner kitabxanası yüklənmədi. İnternet bağlantısını yoxlayın.', true);
+            return;
+          }
+          let scannerInstance = null;
+          try {
+            document.getElementById('scannedCustomer').classList.add('hidden');
+            document.getElementById('reader').classList.remove('hidden');
+            scannerInstance = new Html5Qrcode('reader');
+            scanner = scannerInstance;
+            await scannerInstance.start(
+              { facingMode: 'environment' },
+              { fps: 10, qrbox: { width: 240, height: 240 } },
+              async decodedText => {
+                if (generation !== scannerGeneration) return;
+                const id = decodedText.trim();
+                if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+                  showMessage(message, 'Bu QR kod Yenə gəl müştəri kartına aid deyil.', true);
+                  return;
+                }
+                if (scanLookupInProgress) return;
+                scanLookupInProgress = true;
+                try {
+                  await stopScanner();
+                  await lookupCustomer(id);
+                } catch (error) {
+                  showMessage(message, error.message || 'Müştəri kartı tapılmadı.', true);
+                  await startScanner();
+                } finally {
+                  scanLookupInProgress = false;
+                }
+              },
+              () => {}
+            );
+            if (generation !== scannerGeneration) {
+              await disposeScanner(scannerInstance);
+              if (scanner === scannerInstance) scanner = null;
+              document.getElementById('reader').classList.add('hidden');
+            }
+          } catch (error) {
+            if (scanner === scannerInstance) scanner = null;
+            try {
+              if (scannerInstance) await disposeScanner(scannerInstance);
+            } catch (cleanupError) {
+              console.error('Skaner resursları təmizlənmədi:', cleanupError);
+            }
+            document.getElementById('reader').classList.add('hidden');
+            if (generation === scannerGeneration) {
+              showMessage(message, error.message || 'Kameranı başlatmaq mümkün olmadı.', true);
+            }
+          }
+        })();
+        try {
+          await scannerStartPromise;
+        } finally {
+          scannerStartPromise = null;
+        }
+      }
+
+      function notifyCustomerCardUpdated(customerId) {
+        const signal = { slug, customerId, updatedAt: Date.now() };
+        try {
+          if (typeof BroadcastChannel === 'function') {
+            const channel = new BroadcastChannel('yenegel-loyalty-card-updates');
+            channel.postMessage(signal);
+            channel.close();
+          }
+        } catch (error) {
+          console.warn('BroadcastChannel siqnalı göndərilmədi:', error);
         }
         try {
-          document.getElementById('scannedCustomer').classList.add('hidden');
-          document.getElementById('startScannerBtn').classList.add('hidden');
-          document.getElementById('reader').classList.remove('hidden');
-          scanner = new Html5Qrcode('reader');
-          await scanner.start(
-            { facingMode: 'environment' },
-            { fps: 10, qrbox: { width: 240, height: 240 } },
-            async decodedText => {
-              const id = decodedText.trim();
-              if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
-                showMessage(message, 'Bu QR kod Yenə gəl müştəri kartına aid deyil.', true);
-                return;
-              }
-              try {
-                await stopScanner();
-                await lookupCustomer(id);
-              } catch (error) {
-                showMessage(message, error.message || 'Müştəri kartı tapılmadı.', true);
-                document.getElementById('startScannerBtn').classList.remove('hidden');
-              }
-            },
-            () => {}
-          );
+          localStorage.setItem('yenegel_loyalty_card_update', JSON.stringify(signal));
         } catch (error) {
-          await stopScanner().catch(() => {});
-          showMessage(message, error.message || 'Kameranı başlatmaq mümkün olmadı.', true);
+          console.warn('Kart yenilənmə siqnalı localStorage-ə yazılmadı:', error);
         }
-      });
+      }
 
       async function submitStamp(stampDelta) {
         if (!selectedCustomer) return;
@@ -390,6 +456,7 @@
             })
           });
           renderScannedCustomer(data.card);
+          notifyCustomerCardUpdated(selectedCustomer.id);
           showMessage(message, stampDelta > 0 ? 'Möhür əlavə edildi və tarixçəyə yazıldı.' : 'Möhür silindi və tarixçəyə yazıldı.', false);
         } catch (error) {
           showMessage(message, error.message || 'Əməliyyat tamamlanmadı.', true);
@@ -399,10 +466,11 @@
       }
       document.getElementById('addStampBtn').addEventListener('click', () => submitStamp(1));
       document.getElementById('removeStampBtn').addEventListener('click', () => submitStamp(-1));
-      document.getElementById('scanNextBtn').addEventListener('click', () => {
+      document.getElementById('scanNextBtn').addEventListener('click', async () => {
         selectedCustomer = null;
         document.getElementById('scannedCustomer').classList.add('hidden');
         showMessage(document.getElementById('scannerMsg'), '', false);
+        await startScanner();
       });
 
       function fillSettings(data) {
