@@ -896,7 +896,7 @@
         if (cardPollTimer !== null) return;
         cardPollTimer = window.setInterval(() => {
           if (customer && document.visibilityState === 'visible') {
-            loadCustomerCard({ withLoading: false }).catch(() => {
+            loadCustomerCard().catch(() => {
               mainMsg.textContent = 'Kart məlumatı yenilənə bilmədi. Yenidən yoxlanılır...';
               mainMsg.className = 'msg err';
               mainMsg.dataset.refreshError = 'true';
