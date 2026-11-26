@@ -14,7 +14,6 @@ exports.handler = async event => {
     const slug = String(body.slug || 'kaya').trim().toLowerCase();
     const pin = String(body.pin || '').trim();
     const customerId = String(body.customer_id || '').trim();
-    const amount = Number(body.amount);
     const stampDelta = Number(body.stamp_delta);
 
     if (!/^\d{4}$/.test(pin)) {
@@ -23,14 +22,20 @@ exports.handler = async event => {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(customerId)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Müştəri QR kodu etibarsızdır.' }) };
     }
+    if (![-1, 1].includes(stampDelta)) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Möhür əməliyyatı etibarsızdır.' }) };
+    }
+    const amount = stampDelta === -1 ? 0 : Number(body.amount);
     const billAmount = Number.isFinite(amount)
       ? Math.round((amount + Number.EPSILON) * 100) / 100
       : NaN;
-    if (!Number.isFinite(billAmount) || billAmount <= 0 || billAmount > 99999999.99) {
+    if (
+      !Number.isFinite(billAmount) ||
+      billAmount < 0 ||
+      (stampDelta === 1 && billAmount <= 0) ||
+      billAmount > 99999999.99
+    ) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Düzgün hesab məbləği daxil edin.' }) };
-    }
-    if (![-1, 1].includes(stampDelta)) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Möhür əməliyyatı etibarsızdır.' }) };
     }
 
     const { url, key } = getSupabaseConfig();

@@ -64,7 +64,7 @@
     .loading-overlay {
       position: fixed;
       inset: 0;
-      z-index: 3000;
+      z-index: 5000;
       display: grid;
       place-items: center;
       padding: 20px;
@@ -97,7 +97,7 @@
       position: fixed;
       left: 50%;
       top: 50%;
-      z-index: 3100;
+      z-index: 5100;
       min-width: min(360px, calc(100vw - 32px));
       max-width: calc(100vw - 32px);
       padding: 22px 30px;
@@ -115,6 +115,28 @@
       transition: opacity 180ms ease, transform 180ms ease;
     }
     .toast.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    .confirmation-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 4000;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(15, 15, 14, 0.78);
+      backdrop-filter: blur(4px);
+    }
+    .confirmation-panel {
+      width: min(100%, 460px);
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+    .confirmation-title { margin: 0 0 10px; font-size: 20px; line-height: 1.35; }
+    .confirmation-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .btn-danger { border-color: var(--danger); background: var(--danger); color: #fff; }
     .msg { min-height: 20px; margin-top: 10px; font-size: 13px; font-weight: 700; }
     .msg:empty { display: none; }
     .err { color: var(--danger); }
@@ -123,7 +145,11 @@
     .customer h3 { margin: 0 0 5px; font-size: 17px; }
     .customer p { margin: 4px 0; color: var(--muted); }
     .stamp-count { margin: 14px 0; font-size: 26px; font-weight: 850; }
-    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .danger-zone { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .danger-zone summary { color: var(--muted); font-size: 12px; font-weight: 650; cursor: pointer; }
+    .btn-danger-secondary { margin-top: 10px; border-color: rgba(163, 61, 50, 0.35); color: var(--danger); opacity: 0.72; }
+    .btn-danger-secondary:hover { opacity: 1; }
     #reader { width: 100%; overflow: hidden; border-radius: 14px; }
     #reader video { border-radius: 12px; }
     .table-wrap { overflow-x: auto; }
@@ -195,10 +221,13 @@
           </div>
           <div class="actions">
             <button id="addStampBtn" class="btn btn-primary" type="button">+ Möhür əlavə et</button>
-            <button id="removeStampBtn" class="btn" type="button">− Möhür sil</button>
           </div>
           <button id="scanNextBtn" class="btn" type="button" style="width:100%;margin-top:10px">Başqa müştərini skan et</button>
           <div id="operationMsg" class="msg" role="status"></div>
+          <details class="danger-zone">
+            <summary>Təhlükəli əməliyyatlar</summary>
+            <button id="removeStampBtn" class="btn btn-danger-secondary" type="button">− Möhür sil</button>
+          </details>
         </div>
       </section>
 
@@ -290,6 +319,23 @@
     </main>
   </div>
   <div id="operationToast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div id="removeStampDialog" class="confirmation-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="removeStampTitle">
+    <section class="confirmation-panel">
+      <h2 id="removeStampTitle" class="confirmation-title">Möhür silmək istədiyinizdən əminsinizmi?</h2>
+      <p class="sub">Davam etmək üçün kassir PİN kodunu daxil edin.</p>
+      <form id="removeStampForm">
+        <div class="field">
+          <label for="removeStampPinInput">Kassir PİN kodu</label>
+          <input id="removeStampPinInput" class="input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" required />
+        </div>
+        <div id="removeStampMsg" class="msg" role="status" aria-live="polite"></div>
+        <div class="confirmation-actions">
+          <button id="cancelRemoveStampBtn" class="btn" type="button">Ləğv et</button>
+          <button id="confirmRemoveStampBtn" class="btn btn-danger" type="submit">Davam et</button>
+        </div>
+      </form>
+    </section>
+  </div>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
@@ -303,6 +349,11 @@
       const pinMsg = document.getElementById('pinMsg');
       const loadingOverlay = document.getElementById('loadingOverlay');
       const operationToast = document.getElementById('operationToast');
+      const removeStampDialog = document.getElementById('removeStampDialog');
+      const removeStampForm = document.getElementById('removeStampForm');
+      const removeStampPinInput = document.getElementById('removeStampPinInput');
+      const removeStampMsg = document.getElementById('removeStampMsg');
+      const confirmRemoveStampBtn = document.getElementById('confirmRemoveStampBtn');
       pinScreen.classList.remove('hidden');
       workspace.classList.add('hidden');
       let cashierPin = '';
@@ -363,6 +414,29 @@
           operationToast.textContent = '';
           toastTimer = null;
         }, 2800);
+      }
+
+      async function showStampAddedLoading() {
+        loadingOverlay.classList.remove('hidden');
+        try {
+          await new Promise(resolve => window.setTimeout(resolve, 3000));
+        } finally {
+          loadingOverlay.classList.add('hidden');
+        }
+      }
+
+      function openRemoveStampDialog() {
+        removeStampForm.reset();
+        showMessage(removeStampMsg, '', false);
+        removeStampDialog.classList.remove('hidden');
+        window.setTimeout(() => removeStampPinInput.focus(), 0);
+      }
+
+      function closeRemoveStampDialog() {
+        removeStampDialog.classList.add('hidden');
+        removeStampForm.reset();
+        showMessage(removeStampMsg, '', false);
+        document.getElementById('removeStampBtn').focus();
       }
 
       pinInput.addEventListener('input', () => { pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4); });
@@ -532,13 +606,20 @@
         }
       }
 
-      async function submitStamp(stampDelta) {
+      async function prepareForNextCustomer() {
+        selectedCustomer = null;
+        document.getElementById('scannedCustomer').classList.add('hidden');
+        showMessage(document.getElementById('scannerMsg'), '', false);
+        await startScanner();
+      }
+
+      async function submitStamp(stampDelta, pin = cashierPin, feedbackElement = null) {
         if (!selectedCustomer) return;
-        const amount = Number(document.getElementById('amountInput').value);
-        const message = document.getElementById('operationMsg');
-        if (!Number.isFinite(amount) || amount <= 0) {
+        const amount = stampDelta === 1 ? Number(document.getElementById('amountInput').value) : 0;
+        const message = feedbackElement || document.getElementById('operationMsg');
+        if (stampDelta === 1 && (!Number.isFinite(amount) || amount <= 0)) {
           showMessage(message, 'Yeməyin məbləğini düzgün daxil edin.', true);
-          return;
+          return false;
         }
         const buttons = [document.getElementById('addStampBtn'), document.getElementById('removeStampBtn')];
         buttons.forEach(button => { button.disabled = true; });
@@ -549,7 +630,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               slug,
-              pin: cashierPin,
+              pin,
               customer_id: selectedCustomer.id,
               amount,
               stamp_delta: stampDelta
@@ -558,20 +639,41 @@
           renderScannedCustomer(data.card);
           notifyCustomerCardUpdated(selectedCustomer.id);
           showMessage(message, '', false);
-          showToast(stampDelta > 0 ? 'Möhür əlavə edildi' : 'Möhür silindi');
+          if (stampDelta > 0) {
+            await showStampAddedLoading();
+            showToast('Möhür əlavə edildi');
+            await prepareForNextCustomer();
+          } else {
+            showToast('Möhür silindi');
+          }
+          return true;
         } catch (error) {
           showMessage(message, error.message || 'Əməliyyat tamamlanmadı.', true);
+          return false;
         } finally {
           buttons.forEach(button => { button.disabled = false; });
         }
       }
       document.getElementById('addStampBtn').addEventListener('click', () => submitStamp(1));
-      document.getElementById('removeStampBtn').addEventListener('click', () => submitStamp(-1));
+      document.getElementById('removeStampBtn').addEventListener('click', openRemoveStampDialog);
+      document.getElementById('cancelRemoveStampBtn').addEventListener('click', closeRemoveStampDialog);
+      removeStampForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const pin = removeStampPinInput.value.trim();
+        if (!/^\d{4}$/.test(pin)) {
+          showMessage(removeStampMsg, 'Kassir PİN kodu 4 rəqəm olmalıdır.', true);
+          return;
+        }
+        confirmRemoveStampBtn.disabled = true;
+        try {
+          const removed = await submitStamp(-1, pin, removeStampMsg);
+          if (removed) closeRemoveStampDialog();
+        } finally {
+          confirmRemoveStampBtn.disabled = false;
+        }
+      });
       document.getElementById('scanNextBtn').addEventListener('click', async () => {
-        selectedCustomer = null;
-        document.getElementById('scannedCustomer').classList.add('hidden');
-        showMessage(document.getElementById('scannerMsg'), '', false);
-        await startScanner();
+        await prepareForNextCustomer();
       });
 
       function fillSettings(data) {
