@@ -474,6 +474,13 @@
 
     .auth-modes { width: 100%; margin-bottom: 18px; }
     .auth-mode-btn { flex: 1; }
+    .auth-panel-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 12px;
+      text-decoration: none;
+    }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -520,6 +527,7 @@
         <button id="registerBtn" type="submit" class="btn-primary">Qeydiyyatdan keç</button>
       </form>
       <div id="authMsg" class="msg" role="status"></div>
+      <a id="cashierLink" class="btn-secondary auth-panel-link" href="kassir.html">Kassir / Admin paneli</a>
     </section>
 
     <main id="customerCard" class="card hidden">
@@ -597,6 +605,7 @@
       };
       document.getElementById('darkThemeBtn').addEventListener('click', () => applyTheme('dark'));
       document.getElementById('lightThemeBtn').addEventListener('click', () => applyTheme('light'));
+      document.getElementById('cashierLink').href = `kassir.html?slug=${encodeURIComponent(slug)}`;
 
       function showMessage(element, message, isError) {
         element.textContent = message;
