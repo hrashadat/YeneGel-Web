@@ -341,8 +341,11 @@
       }
 
       function renderScannedCustomer(card) {
-        document.getElementById('customerName').textContent = `${selectedCustomer.first_name} ${selectedCustomer.last_name}`;
-        document.getElementById('customerPhone').textContent = `Telefon: ${selectedCustomer.phone}`;
+        document.getElementById('customerName').textContent =
+          selectedCustomer.account_name || [selectedCustomer.first_name, selectedCustomer.last_name].filter(Boolean).join(' ');
+        const phoneElement = document.getElementById('customerPhone');
+        phoneElement.textContent = selectedCustomer.phone ? `Telefon: ${selectedCustomer.phone}` : '';
+        phoneElement.classList.toggle('hidden', !selectedCustomer.phone);
         document.getElementById('customerId').textContent = `ID: ${selectedCustomer.id}`;
         document.getElementById('stampCount').textContent =
           `${Number(card.stamps_count || 0)} / ${Number(restaurant.stamp_goal || 5)} möhür`;
@@ -509,8 +512,8 @@
         data.customers.forEach(customer => {
           const row = document.createElement('tr');
           const values = [
-            `${customer.first_name} ${customer.last_name}`,
-            customer.phone,
+            customer.account_name || [customer.first_name, customer.last_name].filter(Boolean).join(' '),
+            customer.phone || '—',
             String(customer.card.stamps_count || 0),
             `${Number(customer.card.bonus_balance || 0).toFixed(2)} AZN`,
             customer.created_at ? new Date(customer.created_at).toLocaleDateString('az-AZ') : '—'

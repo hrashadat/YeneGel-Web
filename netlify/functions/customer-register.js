@@ -1,30 +1,46 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const { ensureCustomerCard } = require('../lib/customer-cards');
+const {
+  hashAccessCode,
+  isValidAccessCode,
+  isValidAccountName,
+  normalizeAccountName
+} = require('../lib/customer-credentials');
 const { parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, getSupabaseErrorMessage, sbFetch } = require('../lib/supabase');
 
+function jsonResponse(statusCode, body) {
+  return {
+    statusCode,
+    headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
+    body: JSON.stringify(body)
+  };
+}
+
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+    return jsonResponse(405, { error: 'Method Not Allowed' });
   }
 
   try {
     const body = parseJsonObject(event.body);
     if (!body) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
+      return jsonResponse(400, { error: 'Sorğu məlumatı etibarsızdır.' });
     }
-    const slug = String(body.slug || 'kaya').trim().toLowerCase();
-    const firstName = String(body.first_name || '').trim();
-    const lastName = String(body.last_name || '').trim();
-    const phone = String(body.phone || '').replace(/[()\s.-]/g, '');
-    const legacyToken = String(body.legacy_visitor_token || '').trim();
 
-    if (!firstName || firstName.length > 80 || !lastName || lastName.length > 80) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Ad və soyadı düzgün daxil edin.' }) };
+    const slug = String(body.slug || 'kaya').trim().toLowerCase();
+    const accountName = normalizeAccountName(body.account_name);
+    const accessCode = typeof body.access_code === 'string' ? body.access_code : '';
+    const legacyToken = String(body.legacy_visitor_token || '').trim();
+    if (!isValidAccountName(accountName)) {
+      return jsonResponse(400, {
+        error: 'Hesab adı 3–32 simvol olmalı; hərf, rəqəm, nöqtə, tire və alt xətt istifadə edin.'
+      });
     }
-    if (!/^\+?\d{7,15}$/.test(phone)) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Telefon nömrəsini düzgün daxil edin.' }) };
+    if (!isValidAccessCode(accessCode)) {
+      return jsonResponse(400, { error: 'Kod 4–6 latın hərfi və ya rəqəm olmalıdır.' });
     }
+
     const { url, key } = getSupabaseConfig();
     const restaurants = await sbFetch(
       url,
@@ -33,59 +49,58 @@ exports.handler = async event => {
     );
     const restaurant = restaurants?.[0];
     if (!restaurant) {
-      return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran tapılmadı.' }) };
+      return jsonResponse(404, { error: 'Restoran tapılmadı.' });
     }
 
     const existing = await sbFetch(
       url,
       key,
-      `customers?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&phone=eq.${encodeURIComponent(phone)}&select=id,first_name,last_name,phone`
+      `customers?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&account_name=eq.${encodeURIComponent(accountName)}&select=id`
     );
-    let customer = existing?.[0];
-    if (!customer) {
-      try {
-        const inserted = await sbFetch(url, key, 'customers', {
-          method: 'POST',
-          headers: { Prefer: 'return=representation' },
-          body: JSON.stringify({
-            restaurant_id: restaurant.id,
-            first_name: firstName,
-            last_name: lastName,
-            phone
-          })
-        });
-        customer = inserted?.[0];
-      } catch (err) {
-        if (err.code !== '23505') throw err;
-        const duplicates = await sbFetch(
-          url,
-          key,
-          `customers?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&phone=eq.${encodeURIComponent(phone)}&select=id,first_name,last_name,phone`
-        );
-        customer = duplicates?.[0];
-      }
+    if (existing?.length) {
+      return jsonResponse(409, { error: 'Bu hesab adı artıq istifadə olunur. Başqa hesab adı seçin.' });
     }
+
+    const accessCodeHash = await hashAccessCode(accessCode);
+    let customer;
+    try {
+      const inserted = await sbFetch(url, key, 'customers', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({
+          restaurant_id: restaurant.id,
+          account_name: accountName,
+          access_code: accessCodeHash,
+          first_name: accountName,
+          last_name: '',
+          phone: null
+        })
+      });
+      customer = inserted?.[0];
+    } catch (error) {
+      if (error.code === '23505') {
+        return jsonResponse(409, { error: 'Bu hesab adı artıq istifadə olunur. Başqa hesab adı seçin.' });
+      }
+      throw error;
+    }
+
     if (!customer?.id) throw new Error('Müştəri qeydiyyatı tamamlanmadı.');
     await ensureCustomerCard(url, key, restaurant.id, customer.id, legacyToken);
 
-    return {
-      statusCode: 200,
-      headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
-      body: JSON.stringify({
-        customer: {
-          id: customer.id,
-          first_name: customer.first_name,
-          last_name: customer.last_name,
-          phone: customer.phone
-        }
-      })
-    };
-  } catch (err) {
-    console.error('customer-register error:', err);
-    return {
-      statusCode: 500,
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ error: getSupabaseErrorMessage(err), code: err.code || 'SERVER_ERROR' })
-    };
+    return jsonResponse(201, {
+      customer: {
+        id: customer.id,
+        account_name: customer.account_name,
+        first_name: customer.first_name || customer.account_name,
+        last_name: customer.last_name || '',
+        phone: customer.phone || null
+      }
+    });
+  } catch (error) {
+    console.error('customer-register error:', error);
+    return jsonResponse(500, {
+      error: getSupabaseErrorMessage(error),
+      code: error.code || 'SERVER_ERROR'
+    });
   }
 };

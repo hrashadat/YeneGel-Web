@@ -37,7 +37,7 @@ exports.handler = async event => {
     const customers = await sbFetch(
       url,
       key,
-      `customers?id=eq.${encodeURIComponent(customerId)}&restaurant_id=eq.${encodeURIComponent(restaurant.id)}&select=id,first_name,last_name,phone`
+      `customers?id=eq.${encodeURIComponent(customerId)}&restaurant_id=eq.${encodeURIComponent(restaurant.id)}&select=id,account_name,first_name,last_name,phone`
     );
     const customer = customers?.[0];
     if (!customer) {

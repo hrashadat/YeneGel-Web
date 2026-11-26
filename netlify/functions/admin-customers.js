@@ -38,7 +38,7 @@ exports.handler = async event => {
     const customers = await sbFetch(
       url,
       key,
-      `customers?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&select=id,first_name,last_name,phone,created_at&order=created_at.desc&limit=500`
+      `customers?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&select=id,account_name,first_name,last_name,phone,created_at&order=created_at.desc&limit=500`
     );
     const cards = await sbFetch(
       url,

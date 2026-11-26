@@ -544,25 +544,25 @@
       </div>
       <form id="loginForm" class="hidden">
         <div class="field">
-          <label for="loginPhoneInput">Telefon nömrəsi</label>
-          <input id="loginPhoneInput" class="input" type="tel" inputmode="tel" autocomplete="tel" placeholder="+994..." required />
+          <label for="loginAccountNameInput">Hesab adı</label>
+          <input id="loginAccountNameInput" class="input" type="text" minlength="3" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Hesab adınızı daxil edin" required />
+        </div>
+        <div class="field">
+          <label for="loginAccessCodeInput">Kod (4–6 hərf/rəqəm)</label>
+          <input id="loginAccessCodeInput" class="input" type="password" minlength="4" maxlength="6" pattern="[A-Za-z0-9]{4,6}" autocomplete="current-password" placeholder="Kodunuzu daxil edin" required />
         </div>
         <button id="loginBtn" type="submit" class="btn-primary">Giriş et</button>
       </form>
       <form id="registrationForm">
         <div class="field">
-          <label for="firstNameInput">Ad</label>
-          <input id="firstNameInput" class="input" type="text" maxlength="80" autocomplete="given-name" required />
+          <label for="accountNameInput">Hesab adı</label>
+          <input id="accountNameInput" class="input" type="text" minlength="3" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Yeni hesab adı yaradın" required />
         </div>
         <div class="field">
-          <label for="lastNameInput">Soyad</label>
-          <input id="lastNameInput" class="input" type="text" maxlength="80" autocomplete="family-name" required />
+          <label for="accessCodeInput">Öz kodunuz (4–6 hərf/rəqəm)</label>
+          <input id="accessCodeInput" class="input" type="password" minlength="4" maxlength="6" pattern="[A-Za-z0-9]{4,6}" autocomplete="new-password" placeholder="Yeni kod yaradın" required />
         </div>
-        <div class="field">
-          <label for="phoneInput">Telefon nömrəsi</label>
-          <input id="phoneInput" class="input" type="tel" inputmode="tel" autocomplete="tel" placeholder="+994..." required />
-        </div>
-        <button id="registerBtn" type="submit" class="btn-primary">Qeydiyyatdan keç</button>
+        <button id="registerBtn" type="submit" class="btn-primary">Hesab yarat</button>
       </form>
       <div id="authMsg" class="msg" role="status"></div>
     </section>
@@ -681,7 +681,8 @@
         document.getElementById('totalSpentText').textContent = `${Number(card.total_spent || 0).toFixed(2)} AZN`;
         document.getElementById('bonusBalanceText').textContent = `${Number(card.bonus_balance || 0).toFixed(2)} AZN`;
 
-        document.getElementById('customerName').textContent = `${customer.first_name} ${customer.last_name}`;
+        document.getElementById('customerName').textContent =
+          customer.account_name || [customer.first_name, customer.last_name].filter(Boolean).join(' ');
         document.getElementById('customerId').textContent = `Müştəri ID: ${customer.id}`;
         customerQr.replaceChildren();
         if (typeof QRCode !== 'function') {
@@ -840,6 +841,7 @@
         if (!profile || !profile.id) throw new Error('Müştəri məlumatı cavabda tapılmadı.');
         customer = {
           id: profile.id,
+          account_name: profile.account_name || '',
           first_name: profile.first_name,
           last_name: profile.last_name,
           phone: profile.phone
@@ -859,7 +861,8 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               slug,
-              phone: document.getElementById('loginPhoneInput').value.trim(),
+              account_name: document.getElementById('loginAccountNameInput').value.trim(),
+              access_code: document.getElementById('loginAccessCodeInput').value,
               legacy_visitor_token: getLegacyVisitorToken()
             })
           });
@@ -883,9 +886,8 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               slug,
-              first_name: document.getElementById('firstNameInput').value.trim(),
-              last_name: document.getElementById('lastNameInput').value.trim(),
-              phone: document.getElementById('phoneInput').value.trim(),
+              account_name: document.getElementById('accountNameInput').value.trim(),
+              access_code: document.getElementById('accessCodeInput').value,
               legacy_visitor_token: getLegacyVisitorToken()
             })
           });
