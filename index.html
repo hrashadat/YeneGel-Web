@@ -507,6 +507,44 @@
       display: block;
     }
 
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(24, 24, 22, 0.32);
+      backdrop-filter: blur(2px);
+    }
+
+    .loading-panel {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: var(--surface);
+      color: var(--text-main);
+      font-size: 14px;
+      font-weight: 750;
+      box-shadow: var(--shadow);
+    }
+
+    .loading-spinner {
+      width: 22px;
+      height: 22px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: loading-spin 0.8s linear infinite;
+    }
+
+    @keyframes loading-spin {
+      to { transform: rotate(360deg); }
+    }
+
     .msg {
       margin-top: 8px;
       font-size: 13px;
@@ -573,6 +611,12 @@
   </style>
 </head>
 <body class="light-mode">
+  <div id="loadingOverlay" class="loading-overlay hidden" role="status" aria-live="polite" aria-label="Yüklənir">
+    <div class="loading-panel">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span>Yüklənir...</span>
+    </div>
+  </div>
   <div class="app">
     <div class="top-bar">
       <div class="brand-pill">
@@ -692,6 +736,9 @@
       const mainMsg = document.getElementById('mainMsg');
       const customerQr = document.getElementById('customerQr');
       const cashierLink = document.getElementById('cashierLink');
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      let pendingLoadingRequests = 0;
+      let loadingDelay = null;
       let cardUpdateChannel = null;
       try {
         if (typeof BroadcastChannel === 'function') {
@@ -733,6 +780,39 @@
       function showMessage(element, message, isError) {
         element.textContent = message;
         element.className = `msg ${isError ? 'err' : 'ok'}`;
+      }
+
+      function beginLoading() {
+        pendingLoadingRequests += 1;
+        if (pendingLoadingRequests === 1) {
+          loadingDelay = window.setTimeout(() => {
+            if (pendingLoadingRequests > 0) loadingOverlay.classList.remove('hidden');
+            loadingDelay = null;
+          }, 120);
+        }
+      }
+
+      function endLoading() {
+        pendingLoadingRequests = Math.max(0, pendingLoadingRequests - 1);
+        if (pendingLoadingRequests === 0) {
+          if (loadingDelay !== null) {
+            window.clearTimeout(loadingDelay);
+            loadingDelay = null;
+          }
+          loadingOverlay.classList.add('hidden');
+        }
+      }
+
+      async function requestJson(url, options = {}, withLoading = true) {
+        if (withLoading) beginLoading();
+        try {
+          const response = await fetch(url, options);
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || 'Sorğu tamamlanmadı.');
+          return data;
+        } finally {
+          if (withLoading) endLoading();
+        }
       }
 
       function setAuthMode(mode) {
@@ -816,7 +896,7 @@
         if (cardPollTimer !== null) return;
         cardPollTimer = window.setInterval(() => {
           if (customer && document.visibilityState === 'visible') {
-            loadCustomerCard().catch(() => {
+            loadCustomerCard({ withLoading: false }).catch(() => {
               mainMsg.textContent = 'Kart məlumatı yenilənə bilmədi. Yenidən yoxlanılır...';
               mainMsg.className = 'msg err';
               mainMsg.dataset.refreshError = 'true';
@@ -833,17 +913,18 @@
         }
       }
 
-      async function loadCustomerCard() {
+      async function loadCustomerCard({ withLoading = true } = {}) {
         if (!customer) return;
         if (cardRefreshPromise) return cardRefreshPromise;
 
         const requestedCustomerId = customer.id;
         const refresh = (async () => {
-          const response = await fetch(
-            `/.netlify/functions/get-card?slug=${encodeURIComponent(slug)}&visitorToken=${encodeURIComponent(requestedCustomerId)}`
+          const data = await requestJson(
+            `/.netlify/functions/get-card?slug=${encodeURIComponent(slug)}&visitorToken=${encodeURIComponent(requestedCustomerId)}`,
+            {},
+            withLoading
           );
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok || !data.restaurant || !data.card) {
+          if (!data.restaurant || !data.card) {
             throw new Error(data.error || 'Müştəri kartı yüklənmədi.');
           }
           if (!customer || customer.id !== requestedCustomerId) return;
@@ -922,7 +1003,7 @@
         }
       });
 
-      async function completeAuthentication(profile) {
+      async function completeAuthentication(profile, withLoading = true) {
         if (!profile || !profile.id) throw new Error('Müştəri məlumatı cavabda tapılmadı.');
         customer = {
           id: profile.id,
@@ -933,15 +1014,16 @@
         };
         localStorage.setItem(localKey, JSON.stringify(customer));
         cashierLink.classList.add('hidden');
-        await loadCustomerCard();
+        await loadCustomerCard({ withLoading });
       }
 
       loginForm.addEventListener('submit', async event => {
         event.preventDefault();
         authMsg.textContent = '';
         loginBtn.disabled = true;
+        beginLoading();
         try {
-          const response = await fetch('/.netlify/functions/customer-login', {
+          const data = await requestJson('/.netlify/functions/customer-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -950,13 +1032,13 @@
               access_code: document.getElementById('loginAccessCodeInput').value,
               legacy_visitor_token: getLegacyVisitorToken()
             })
-          });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok || !data.customer) throw new Error(data.error || 'Giriş alınmadı.');
-          await completeAuthentication(data.customer);
+          }, false);
+          if (!data.customer) throw new Error(data.error || 'Giriş alınmadı.');
+          await completeAuthentication(data.customer, false);
         } catch (error) {
           showMessage(authMsg, error.message || 'Serverlə əlaqə alınmadı.', true);
         } finally {
+          endLoading();
           loginBtn.disabled = false;
         }
       });
@@ -965,8 +1047,9 @@
         event.preventDefault();
         authMsg.textContent = '';
         registerBtn.disabled = true;
+        beginLoading();
         try {
-          const response = await fetch('/.netlify/functions/customer-register', {
+          const data = await requestJson('/.netlify/functions/customer-register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -975,13 +1058,13 @@
               access_code: document.getElementById('accessCodeInput').value,
               legacy_visitor_token: getLegacyVisitorToken()
             })
-          });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok || !data.customer) throw new Error(data.error || 'Qeydiyyat tamamlanmadı.');
-          await completeAuthentication(data.customer);
+          }, false);
+          if (!data.customer) throw new Error(data.error || 'Qeydiyyat tamamlanmadı.');
+          await completeAuthentication(data.customer, false);
         } catch (error) {
           showMessage(authMsg, error.message || 'Serverlə əlaqə alınmadı.', true);
         } finally {
+          endLoading();
           registerBtn.disabled = false;
         }
       });

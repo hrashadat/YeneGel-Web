@@ -61,6 +61,58 @@
     .tab { flex: 1; padding: 10px 12px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 750; cursor: pointer; }
     .tab.active { background: var(--accent); color: var(--accent-text); }
     .hidden { display: none !important; }
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(24, 24, 22, 0.32);
+      backdrop-filter: blur(2px);
+    }
+    .loading-panel {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 750;
+      box-shadow: var(--shadow);
+    }
+    .loading-spinner {
+      width: 22px;
+      height: 22px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: loading-spin 0.8s linear infinite;
+    }
+    @keyframes loading-spin { to { transform: rotate(360deg); } }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 3100;
+      max-width: calc(100vw - 32px);
+      padding: 12px 18px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--accent);
+      color: var(--accent-text);
+      font-weight: 800;
+      text-align: center;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 10px);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    .toast.visible { opacity: 1; transform: translate(-50%, 0); }
     .msg { min-height: 20px; margin-top: 10px; font-size: 13px; font-weight: 700; }
     .msg:empty { display: none; }
     .err { color: var(--danger); }
@@ -88,6 +140,12 @@
   </style>
 </head>
 <body class="light-mode">
+  <div id="loadingOverlay" class="loading-overlay hidden" role="status" aria-live="polite" aria-label="Yüklənir">
+    <div class="loading-panel">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span>Yüklənir...</span>
+    </div>
+  </div>
   <div class="app">
     <header class="topbar">
       <div class="brand">
@@ -229,6 +287,7 @@
       </section>
     </main>
   </div>
+  <div id="operationToast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
@@ -240,6 +299,8 @@
       const pinInput = document.getElementById('pinInput');
       const pinBtn = document.getElementById('pinBtn');
       const pinMsg = document.getElementById('pinMsg');
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      const operationToast = document.getElementById('operationToast');
       pinScreen.classList.remove('hidden');
       workspace.classList.add('hidden');
       let cashierPin = '';
@@ -249,6 +310,9 @@
       let scannerStartPromise = null;
       let scannerGeneration = 0;
       let scanLookupInProgress = false;
+      let pendingLoadingRequests = 0;
+      let loadingDelay = null;
+      let toastTimer = null;
       const clearedScanners = new WeakSet();
       let adminCode = '';
       document.getElementById('customerPageLink').href = `index.html?slug=${encodeURIComponent(slug)}`;
@@ -259,15 +323,44 @@
       });
 
       async function requestJson(url, options) {
-        const response = await fetch(url, options);
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || 'Sorğu uğursuz oldu.');
-        return data;
+        pendingLoadingRequests += 1;
+        if (pendingLoadingRequests === 1) {
+          loadingDelay = window.setTimeout(() => {
+            if (pendingLoadingRequests > 0) loadingOverlay.classList.remove('hidden');
+            loadingDelay = null;
+          }, 120);
+        }
+        try {
+          const response = await fetch(url, options);
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || 'Sorğu uğursuz oldu.');
+          return data;
+        } finally {
+          pendingLoadingRequests = Math.max(0, pendingLoadingRequests - 1);
+          if (pendingLoadingRequests === 0) {
+            if (loadingDelay !== null) {
+              window.clearTimeout(loadingDelay);
+              loadingDelay = null;
+            }
+            loadingOverlay.classList.add('hidden');
+          }
+        }
       }
 
       function showMessage(element, message, error) {
         element.textContent = message;
         element.className = `msg${message ? (error ? ' err' : ' ok') : ''}`;
+      }
+
+      function showToast(message) {
+        operationToast.textContent = message;
+        operationToast.classList.add('visible');
+        if (toastTimer !== null) window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => {
+          operationToast.classList.remove('visible');
+          operationToast.textContent = '';
+          toastTimer = null;
+        }, 2800);
       }
 
       pinInput.addEventListener('input', () => { pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4); });
@@ -462,7 +555,8 @@
           });
           renderScannedCustomer(data.card);
           notifyCustomerCardUpdated(selectedCustomer.id);
-          showMessage(message, stampDelta > 0 ? 'Möhür əlavə edildi və tarixçəyə yazıldı.' : 'Möhür silindi və tarixçəyə yazıldı.', false);
+          showMessage(message, '', false);
+          showToast(stampDelta > 0 ? 'Möhür əlavə edildi' : 'Möhür silindi');
         } catch (error) {
           showMessage(message, error.message || 'Əməliyyat tamamlanmadı.', true);
         } finally {
