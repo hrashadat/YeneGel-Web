@@ -34,11 +34,11 @@ exports.handler = async event => {
     const legacyToken = String(body.legacy_visitor_token || '').trim();
     if (!isValidAccountName(accountName)) {
       return jsonResponse(400, {
-        error: 'Hesab adı 3–32 simvol olmalı; hərf, rəqəm, nöqtə, tire və alt xətt istifadə edin.'
+        error: 'Hesab adında hərf, rəqəm, boşluq, nöqtə, tire və alt xətt istifadə edin.'
       });
     }
     if (!isValidAccessCode(accessCode)) {
-      return jsonResponse(400, { error: 'Kod 4–6 latın hərfi və ya rəqəm olmalıdır.' });
+      return jsonResponse(400, { error: 'Kod 4–10 simvoldan ibarət olmalıdır.' });
     }
 
     const { url, key } = getSupabaseConfig();

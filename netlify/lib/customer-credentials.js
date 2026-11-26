@@ -9,17 +9,17 @@ const SALT_BYTES = 16;
 const KEY_BYTES = 64;
 
 function normalizeAccountName(value) {
-  return String(value || '').normalize('NFKC').trim().toLowerCase();
+  return String(value || '').normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase();
 }
 
 function isValidAccountName(value) {
   const accountName = normalizeAccountName(value);
   const length = Array.from(accountName).length;
-  return length >= 3 && length <= 32 && /^[\p{L}\p{N}_.-]+$/u.test(accountName);
+  return length >= 3 && length <= 32 && /^[\p{L}\p{N}_. -]+$/u.test(accountName);
 }
 
 function isValidAccessCode(value) {
-  return typeof value === 'string' && /^[A-Za-z0-9]{4,6}$/.test(value);
+  return typeof value === 'string' && value.length >= 4 && value.length <= 10;
 }
 
 async function hashAccessCode(accessCode) {

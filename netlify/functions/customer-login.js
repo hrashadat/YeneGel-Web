@@ -33,8 +33,13 @@ exports.handler = async event => {
     const accountName = normalizeAccountName(body.account_name);
     const accessCode = typeof body.access_code === 'string' ? body.access_code : '';
     const legacyToken = String(body.legacy_visitor_token || '').trim();
-    if (!isValidAccountName(accountName) || !isValidAccessCode(accessCode)) {
-      return jsonResponse(400, { error: 'Hesab adını və 4–6 simvolluq kodu düzgün daxil edin.' });
+    if (!isValidAccountName(accountName)) {
+      return jsonResponse(400, {
+        error: 'Hesab adında hərf, rəqəm, boşluq, nöqtə, tire və alt xətt istifadə edin.'
+      });
+    }
+    if (!isValidAccessCode(accessCode)) {
+      return jsonResponse(400, { error: 'Kod 4–10 simvoldan ibarət olmalıdır.' });
     }
 
     const { url, key } = getSupabaseConfig();
