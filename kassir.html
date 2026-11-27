@@ -17,7 +17,7 @@
       --accent-text: #fff;
       --danger: #a33d32;
       --success: #3d6b4e;
-      --bonus-gold: #d4af37;
+      --bonus-gold: #80621f;
       --shadow: 0 10px 30px rgba(24, 24, 22, .05);
     }
     body:not(.light-mode) {
@@ -30,7 +30,7 @@
       --muted: #c0b6a8;
       --accent: #f7f5f0;
       --accent-text: #181816;
-      --bonus-gold: #d4af37;
+      --bonus-gold: #d7b765;
       --shadow: 0 12px 32px rgba(0, 0, 0, .2);
     }
     * { box-sizing: border-box; }
@@ -45,6 +45,7 @@
     button { font: inherit; }
     input, textarea, select { font: inherit; font-size: 16px; }
     .app { width: min(100%, 760px); margin: 0 auto; display: grid; gap: 16px; }
+    .app.admin-expanded { width: min(100%, 1120px); }
     .slug-error { width: min(100%, 760px); margin: auto; }
     .topbar, .top-actions, .tabs, .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .topbar { min-height: 48px; }
@@ -145,6 +146,33 @@
       transition: opacity 180ms ease, transform 180ms ease;
     }
     .toast.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    .toast.fullscreen {
+      inset: 0;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      max-width: none;
+      padding: 24px;
+      border: 0;
+      border-radius: 0;
+      background: rgba(24, 24, 22, .82);
+      color: var(--accent-text);
+      backdrop-filter: blur(5px);
+      transform: none;
+    }
+    .toast.fullscreen span {
+      width: min(100%, 600px);
+      padding: clamp(28px, 7vw, 56px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: var(--accent);
+      color: var(--accent-text);
+      font-size: clamp(28px, 7vw, 48px);
+      font-weight: 850;
+      line-height: 1.2;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, .35);
+    }
+    .toast.fullscreen.visible { transform: none; }
     .confirmation-overlay {
       position: fixed;
       inset: 0;
@@ -179,6 +207,8 @@
     .customer .customer-total-spent { color: var(--text); font-weight: 750; }
     .customer .customer-bonus-balance { color: var(--bonus-gold); font-weight: 700; }
     .stamp-count { margin: 14px 0; font-size: 26px; font-weight: 850; }
+    .app.admin-expanded .tabs { padding: 6px; gap: 8px; }
+    .app.admin-expanded .tab { padding: 14px 16px; border-radius: 11px; font-size: 16px; }
     .actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
     .actions + #bonusRedeemPanel { margin-top: 14px; }
     .danger-zone { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
@@ -191,9 +221,30 @@
     table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
     th, td { padding: 10px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
     th { color: var(--muted); font-size: 11px; }
+    #adminPanel { padding: clamp(20px, 3vw, 36px); }
+    #adminPanel .title { font-size: clamp(22px, 2.4vw, 28px); }
+    #adminPanel .sub { font-size: 15px; line-height: 1.6; }
+    #adminPanel label { margin-bottom: 8px; font-size: 14px; }
+    #adminPanel .input { min-height: 48px; padding: 14px 15px; }
+    #adminPanel #menuInput { min-height: 220px; }
+    #adminPanel .btn { padding: 14px 18px; font-size: 16px; }
+    #adminPanel .field-error { font-size: 14px; }
+    #settingsForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+    #settingsForm .field { margin-bottom: 20px; }
+    #settingsForm .settings-menu-field,
+    #settingsForm #saveSettingsBtn { grid-column: 1 / -1; }
+    #adminPanel .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
+    #adminPanel table { font-size: 15px; }
+    #adminPanel th, #adminPanel td { padding: 14px 12px; }
+    #adminPanel th { font-size: 13px; }
+    .customer-search-field { max-width: 680px; margin: 18px 0 14px; }
     @media (max-width: 520px) {
       body { padding: 16px 12px 34px; }
       .card { padding: 17px; }
+      .app.admin-expanded { width: 100%; }
+      #settingsForm { grid-template-columns: 1fr; }
+      #settingsForm .settings-menu-field,
+      #settingsForm #saveSettingsBtn { grid-column: 1; }
       .topbar { align-items: flex-start; }
       .actions { grid-template-columns: 1fr; }
       .tabs { gap: 4px; }
@@ -359,7 +410,7 @@
               <input id="instagramInput" class="input" type="text" maxlength="255" aria-describedby="instagramInputError" />
               <small id="instagramInputError" class="field-error" role="alert"></small>
             </div>
-            <div class="field">
+            <div class="field settings-menu-field">
               <label for="menuInput">Rəqəmsal menyu (JSON)</label>
               <textarea id="menuInput" class="input" spellcheck="false" placeholder='[{"name":"Yemək","price":12}]'></textarea>
               <small id="menuInputError" class="field-error" role="alert"></small>
@@ -371,6 +422,10 @@
           <hr style="border:0;border-top:1px solid var(--border);margin:24px 0" />
           <h2 class="title">Müştəri siyahısı</h2>
           <p class="sub">Son 500 qeydiyyatdan keçmiş müştəri və onların cari kart balansı.</p>
+          <div class="field customer-search-field">
+            <label for="customerSearchInput">Müştərilərdə axtar</label>
+            <input id="customerSearchInput" class="input" type="search" autocomplete="off" placeholder="Ad, hesab adı və ya telefonla axtar" />
+          </div>
           <div id="customerListMsg" class="msg"></div>
           <div class="table-wrap">
             <table>
@@ -433,6 +488,8 @@
       }
       const pinScreen = document.getElementById('pinScreen');
       const workspace = document.getElementById('workspace');
+      const app = document.querySelector('.app');
+      const customerSearchInput = document.getElementById('customerSearchInput');
       const pinForm = document.getElementById('pinForm');
       const pinInput = document.getElementById('pinInput');
       const pinBtn = document.getElementById('pinBtn');
@@ -506,6 +563,7 @@
             );
           }
         });
+        filterCustomerRows();
       });
 
       async function requestJson(url, options) {
@@ -677,6 +735,7 @@
 
       function showToast(message) {
         operationToastText.textContent = t(message);
+        operationToast.classList.toggle('fullscreen', message === 'Möhür əlavə edildi');
         operationToast.classList.add('visible');
         if (toastTimer !== null) window.clearTimeout(toastTimer);
         toastTimer = window.setTimeout(() => {
@@ -684,15 +743,6 @@
           operationToastText.textContent = '';
           toastTimer = null;
         }, 2800);
-      }
-
-      async function showStampAddedLoading() {
-        loadingOverlay.classList.remove('hidden');
-        try {
-          await new Promise(resolve => window.setTimeout(resolve, 3000));
-        } finally {
-          loadingOverlay.classList.add('hidden');
-        }
       }
 
       function openRemoveStampDialog() {
@@ -755,6 +805,7 @@
           document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button));
           document.getElementById('cashierPanel').classList.toggle('hidden', button.dataset.panel !== 'cashierPanel');
           document.getElementById('adminPanel').classList.toggle('hidden', button.dataset.panel !== 'adminPanel');
+          app.classList.toggle('admin-expanded', button.dataset.panel === 'adminPanel');
           if (button.dataset.panel === 'cashierPanel') {
             selectedCustomer = null;
             if (scannerStartPromise) await scannerStartPromise;
@@ -949,16 +1000,17 @@
         showMessage(message, '', false);
         let writeCompleted = false;
         try {
+          const payload = {
+            slug,
+            pin,
+            customer_id: customerId,
+            stamp_delta: stampDelta
+          };
+          if (stampDelta === 1) payload.amount = amount;
           const result = await requestJson('/.netlify/functions/cashier-stamp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              slug,
-              pin,
-              customer_id: customerId,
-              amount,
-              stamp_delta: stampDelta
-            })
+            body: JSON.stringify(payload)
           });
           writeCompleted = true;
           if (!result.card) {
@@ -969,7 +1021,6 @@
           notifyCustomerCardUpdated(customerId);
           showMessage(message, '', false);
           if (stampDelta > 0) {
-            await showStampAddedLoading();
             showToast('Möhür əlavə edildi');
             await prepareForNextCustomer();
           } else {
@@ -1080,6 +1131,33 @@
           ? t('Bonus faizi (%)') : t('Bonus məbləği (AZN)');
       });
 
+      function filterCustomerRows() {
+        const message = document.getElementById('customerListMsg');
+        const rows = Array.from(document.querySelectorAll('#customerRows tr'));
+        const query = customerSearchInput.value.trim().toLocaleLowerCase();
+        let visibleCount = 0;
+        rows.forEach(row => {
+          const matches = row.textContent.toLocaleLowerCase().includes(query);
+          row.hidden = !matches;
+          if (matches) visibleCount += 1;
+        });
+
+        if (!rows.length) {
+          showMessage(message, 'Hələ müştəri yoxdur.', false);
+        } else if (query && visibleCount === 0) {
+          showMessage(message, 'Axtarışa uyğun müştəri tapılmadı.', false);
+        } else if (query) {
+          showMessage(message, t('{{shown}} / {{count}} müştəri göstərilir.', {
+            shown: visibleCount,
+            count: rows.length
+          }), false);
+        } else {
+          showMessage(message, t('{{count}} müştəri göstərilir.', { count: rows.length }), false);
+        }
+      }
+
+      customerSearchInput.addEventListener('input', filterCustomerRows);
+
       async function loadCustomers() {
         const message = document.getElementById('customerListMsg');
         showMessage(message, 'Müştəri siyahısı yüklənir...', false);
@@ -1115,9 +1193,7 @@
           });
           rows.appendChild(row);
         });
-        showMessage(message, data.customers.length
-          ? t('{{count}} müştəri göstərilir.', { count: data.customers.length })
-          : 'Hələ müştəri yoxdur.', false);
+        filterCustomerRows();
       }
 
       document.getElementById('adminLoginForm').addEventListener('submit', async event => {

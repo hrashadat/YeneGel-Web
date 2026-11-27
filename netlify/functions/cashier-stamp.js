@@ -29,19 +29,17 @@ exports.handler = async event => {
     if (![-1, 1].includes(stampDelta)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Möhür əməliyyatı etibarsızdır.' }) };
     }
-    const amount = stampDelta === -1
-      ? 0
-      : (typeof body.amount === 'number' || typeof body.amount === 'string') ? Number(body.amount) : NaN;
-    const billAmount = Number.isFinite(amount)
-      ? Math.round((amount + Number.EPSILON) * 100) / 100
-      : NaN;
-    if (
-      !Number.isFinite(billAmount) ||
-      billAmount < 0 ||
-      (stampDelta === 1 && billAmount <= 0) ||
-      billAmount > 99999999.99
-    ) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Düzgün hesab məbləği daxil edin.' }) };
+    let billAmount = 0;
+    if (stampDelta === 1) {
+      const amount = typeof body.amount === 'number' || typeof body.amount === 'string'
+        ? Number(body.amount)
+        : NaN;
+      billAmount = Number.isFinite(amount)
+        ? Math.round((amount + Number.EPSILON) * 100) / 100
+        : NaN;
+      if (!Number.isFinite(billAmount) || billAmount <= 0 || billAmount > 99999999.99) {
+        return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Düzgün hesab məbləği daxil edin.' }) };
+      }
     }
 
     const { url, key } = getSupabaseConfig();
