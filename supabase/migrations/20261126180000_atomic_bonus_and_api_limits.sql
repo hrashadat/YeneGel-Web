@@ -153,15 +153,6 @@ BEGIN
     );
   END IF;
 
-  INSERT INTO public.transactions (restaurant_id, customer_id, amount, stamp_delta, action)
-  VALUES (
-    p_restaurant_id,
-    p_customer_id,
-    p_amount,
-    v_delta,
-    CASE WHEN p_stamp_delta = 1 THEN 'stamp_added' ELSE 'stamp_removed' END
-  );
-
   RETURN jsonb_build_object(
     'card', to_jsonb(v_card),
     'stamp_delta', v_delta,

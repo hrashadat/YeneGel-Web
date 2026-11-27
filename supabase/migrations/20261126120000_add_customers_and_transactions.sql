@@ -15,21 +15,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
 CREATE UNIQUE INDEX IF NOT EXISTS customers_restaurant_phone_uidx
   ON public.customers (restaurant_id, phone);
 
-CREATE TABLE IF NOT EXISTS public.transactions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  restaurant_id uuid NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
-  customer_id uuid NOT NULL REFERENCES public.customers(id) ON DELETE CASCADE,
-  amount numeric(10, 2) NOT NULL CHECK (amount > 0),
-  stamp_delta smallint NOT NULL CHECK (stamp_delta BETWEEN -1 AND 1),
-  action text NOT NULL CHECK (action IN ('stamp_added', 'stamp_removed')),
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS transactions_customer_created_idx
-  ON public.transactions (customer_id, created_at DESC);
-
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.apply_customer_stamp_transaction(
   p_restaurant_id uuid,
@@ -117,13 +103,17 @@ BEGIN
   WHERE id = v_card.id
   RETURNING * INTO v_card;
 
-  INSERT INTO public.transactions (restaurant_id, customer_id, amount, stamp_delta, action)
+  INSERT INTO public.card_transactions (
+    restaurant_id, card_id, visitor_token, tx_type, bill_amount, bonus_delta, stamp_delta
+  )
   VALUES (
     p_restaurant_id,
-    p_customer_id,
+    v_card.id,
+    p_customer_id::text,
+    'stamp',
     p_amount,
-    v_delta,
-    CASE WHEN p_stamp_delta = 1 THEN 'stamp_added' ELSE 'stamp_removed' END
+    v_bonus_delta,
+    v_delta
   );
 
   RETURN jsonb_build_object(

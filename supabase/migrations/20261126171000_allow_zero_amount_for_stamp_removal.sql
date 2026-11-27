@@ -1,10 +1,3 @@
--- A manual stamp removal may not be tied to a purchase amount.
-ALTER TABLE public.transactions
-  DROP CONSTRAINT IF EXISTS transactions_amount_check;
-
-ALTER TABLE public.transactions
-  ADD CONSTRAINT transactions_amount_nonnegative CHECK (amount >= 0);
-
 CREATE OR REPLACE FUNCTION public.apply_customer_stamp_transaction(
   p_restaurant_id uuid,
   p_customer_id uuid,
@@ -94,13 +87,17 @@ BEGIN
   WHERE id = v_card.id
   RETURNING * INTO v_card;
 
-  INSERT INTO public.transactions (restaurant_id, customer_id, amount, stamp_delta, action)
+  INSERT INTO public.card_transactions (
+    restaurant_id, card_id, visitor_token, tx_type, bill_amount, bonus_delta, stamp_delta
+  )
   VALUES (
     p_restaurant_id,
-    p_customer_id,
+    v_card.id,
+    p_customer_id::text,
+    'stamp',
     p_amount,
-    v_delta,
-    CASE WHEN p_stamp_delta = 1 THEN 'stamp_added' ELSE 'stamp_removed' END
+    v_bonus_delta,
+    v_delta
   );
 
   RETURN jsonb_build_object(
