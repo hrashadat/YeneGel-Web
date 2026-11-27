@@ -3,6 +3,25 @@ const { constantTimeEqual, isBoundedString, isValidRestaurantSlug, parseJsonObje
 const { secureHandler } = require('../lib/security');
 const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
 
+function fieldError(field, error) {
+  return {
+    statusCode: 400,
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ error, field })
+  };
+}
+
+function validateTextField(value, { minimum, maximum, optional = false }) {
+  const text = value === undefined || value === null ? '' : value;
+  if (typeof text !== 'string') return 'Mətn formatında daxil edin.';
+
+  const length = Array.from(text.trim()).length;
+  if (optional && length === 0) return null;
+  if (length < minimum) return `Minimum ${minimum} simvol olmalıdır.`;
+  if (length > maximum) return `Maksimum ${maximum} simvol ola bilər.`;
+  return null;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Method Not Allowed' }) };
@@ -34,15 +53,15 @@ exports.handler = async (event) => {
     const bonusMode = typeof body.bonus_mode === 'string' ? body.bonus_mode.trim().toLowerCase() : '';
 
     if (!Number.isInteger(stampGoal) || stampGoal < 1 || stampGoal > 20) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Möhür sayı 1-20 arası tam ədəd olmalıdır.' }) };
+      return fieldError('stampGoalInput', 'Möhür sayı 1-20 arası tam ədəd olmalıdır.');
     }
 
     if (bonusMode !== 'fixed' && bonusMode !== 'percent') {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Bonus rejimi düzgün seçilməyib.' }) };
+      return fieldError('bonusModeInput', 'Bonus rejimi düzgün seçilməyib.');
     }
 
     if (!/^\d{4}$/.test(cashierPin)) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Kassir PİN kodu 4 rəqəm olmalıdır.' }) };
+      return fieldError('cashierPinInput', 'Kassir PİN kodu 4 rəqəm olmalıdır.');
     }
 
     const bonusValueInput = bonusMode === 'percent' ? body.bonus_percent : body.bonus_fixed_amount;
@@ -58,21 +77,27 @@ exports.handler = async (event) => {
       (bonusMode === 'percent' && bonusValue > 100) ||
       (bonusMode === 'fixed' && bonusValue > 99999999.99)
     ) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Bonus dəyərini düzgün daxil edin.' }) };
+      return fieldError(
+        'bonusValueInput',
+        bonusMode === 'percent'
+          ? 'Bonus faizi 0-100 arası olmalıdır.'
+          : 'Bonus dəyərini düzgün daxil edin.'
+      );
     }
     if (body.menu_json !== undefined && (!body.menu_json || typeof body.menu_json !== 'object')) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Menyu JSON formatında obyekt və ya siyahı olmalıdır.' }) };
+      return fieldError('menuInput', 'Menyu JSON formatında obyekt və ya siyahı olmalıdır.');
     }
-    const boundedFields = [
-      [body.reward_text, 45],
-      [body.name, 120],
-      [body.about, 5000],
-      [body.address, 500],
-      [body.phone, 40],
-      [body.instagram, 255]
+    const textFields = [
+      { key: 'name', field: 'restaurantNameInput', minimum: 2, maximum: 200 },
+      { key: 'about', field: 'aboutInput', minimum: 2, maximum: 10000, optional: true },
+      { key: 'address', field: 'addressInput', minimum: 2, maximum: 1000 },
+      { key: 'reward_text', field: 'rewardTextInput', minimum: 0, maximum: 80, optional: true },
+      { key: 'phone', field: 'restaurantPhoneInput', minimum: 0, maximum: 50, optional: true },
+      { key: 'instagram', field: 'instagramInput', minimum: 0, maximum: 255, optional: true }
     ];
-    if (boundedFields.some(([value, maximum]) => value !== undefined && !isBoundedString(value, maximum))) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran məlumatlarının uzunluğu etibarsızdır.' }) };
+    for (const textField of textFields) {
+      const error = validateTextField(body[textField.key], textField);
+      if (error) return fieldError(textField.field, error);
     }
 
     const { url, key } = getSupabaseConfig();

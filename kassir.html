@@ -171,6 +171,8 @@
     .msg:empty { display: none; }
     .err { color: var(--danger); }
     .ok { color: var(--success); }
+    .field-error { display: block; margin-top: 5px; color: var(--danger); font-size: 12px; font-weight: 700; line-height: 1.4; }
+    .field-error:empty { display: none; }
     .customer { margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--soft); }
     .customer h3 { margin: 0 0 5px; font-size: 17px; }
     .customer p { margin: 4px 0; color: var(--muted); }
@@ -178,6 +180,7 @@
     .customer .customer-bonus-balance { color: var(--bonus-gold); font-weight: 700; }
     .stamp-count { margin: 14px 0; font-size: 26px; font-weight: 850; }
     .actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .actions + #bonusRedeemPanel { margin-top: 14px; }
     .danger-zone { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
     .danger-zone summary { color: var(--muted); font-size: 12px; font-weight: 650; cursor: pointer; }
     .btn-danger-secondary { margin-top: 10px; border-color: rgba(163, 61, 50, 0.35); color: var(--danger); opacity: 0.72; }
@@ -302,53 +305,64 @@
             </div>
             <button id="adminLogoutBtn" class="btn" type="button">Admin çıxışı</button>
           </div>
-          <form id="settingsForm">
+          <form id="settingsForm" novalidate>
             <div class="field">
               <label for="stampGoalInput">Möhür sayı (hədəf, 1–20)</label>
-              <input id="stampGoalInput" class="input" type="number" min="1" max="20" required />
+              <input id="stampGoalInput" class="input" type="number" min="1" max="20" required aria-describedby="stampGoalInputError" />
+              <small id="stampGoalInputError" class="field-error" role="alert"></small>
             </div>
             <div class="field">
               <label for="cashierPinInput">Kassir PİN kodu (dəyişmək üçün yeni 4 rəqəm daxil edin)</label>
-              <input id="cashierPinInput" class="input" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" />
+              <input id="cashierPinInput" class="input" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" aria-describedby="cashierPinInputError" />
+              <small id="cashierPinInputError" class="field-error" role="alert"></small>
             </div>
             <div class="field">
               <label for="bonusModeInput">Bonus rejimi</label>
-              <select id="bonusModeInput" class="input">
+              <select id="bonusModeInput" class="input" aria-describedby="bonusModeInputError">
                 <option value="fixed">Sabit məbləğ (AZN)</option>
                 <option value="percent">Faiz (%)</option>
               </select>
+              <small id="bonusModeInputError" class="field-error" role="alert"></small>
             </div>
             <div class="field">
               <label id="bonusValueLabel" for="bonusValueInput">Bonus məbləği (AZN)</label>
-              <input id="bonusValueInput" class="input" type="number" min="0" step="0.01" required />
+              <input id="bonusValueInput" class="input" type="number" min="0" step="0.01" required aria-describedby="bonusValueInputError" />
+              <small id="bonusValueInputError" class="field-error" role="alert"></small>
             </div>
             <div class="field">
               <label for="rewardTextInput">Bonus banner mətni</label>
-              <input id="rewardTextInput" class="input" type="text" maxlength="45" />
+              <input id="rewardTextInput" class="input" type="text" maxlength="80" aria-describedby="rewardTextInputError" />
+              <small id="rewardTextInputError" class="field-error" role="alert"></small>
             </div>
             <div class="field">
               <label for="restaurantNameInput">Restoran adı</label>
-              <input id="restaurantNameInput" class="input" type="text" />
+              <input id="restaurantNameInput" class="input" type="text" minlength="2" maxlength="200" required aria-describedby="restaurantNameInputError" />
+              <small id="restaurantNameInputError" class="field-error" role="alert"></small>
             </div>
             <div class="field">
               <label for="aboutInput">Restoran haqqında</label>
-              <textarea id="aboutInput" class="input"></textarea>
+              <textarea id="aboutInput" class="input" minlength="2" maxlength="10000" aria-describedby="aboutInputError"></textarea>
+              <small id="aboutInputError" class="field-error" role="alert"></small>
             </div>
             <div class="field">
               <label for="addressInput">Ünvan</label>
-              <input id="addressInput" class="input" type="text" />
+              <input id="addressInput" class="input" type="text" minlength="2" maxlength="1000" required aria-describedby="addressInputError" />
+              <small id="addressInputError" class="field-error" role="alert"></small>
             </div>
             <div class="field">
               <label for="restaurantPhoneInput">Əlaqə nömrəsi</label>
-              <input id="restaurantPhoneInput" class="input" type="text" />
+              <input id="restaurantPhoneInput" class="input" type="text" maxlength="50" aria-describedby="restaurantPhoneInputError" />
+              <small id="restaurantPhoneInputError" class="field-error" role="alert"></small>
             </div>
             <div class="field">
               <label for="instagramInput">Instagram</label>
-              <input id="instagramInput" class="input" type="text" />
+              <input id="instagramInput" class="input" type="text" maxlength="255" aria-describedby="instagramInputError" />
+              <small id="instagramInputError" class="field-error" role="alert"></small>
             </div>
             <div class="field">
               <label for="menuInput">Rəqəmsal menyu (JSON)</label>
               <textarea id="menuInput" class="input" spellcheck="false" placeholder='[{"name":"Yemək","price":12}]'></textarea>
+              <small id="menuInputError" class="field-error" role="alert"></small>
             </div>
             <button id="saveSettingsBtn" class="btn btn-primary" type="submit">Dəyişiklikləri yadda saxla</button>
           </form>
@@ -514,7 +528,11 @@
               : t(data.error || 'Xidmət müvəqqəti əlçatan deyil.');
             throw new Error(message);
           }
-          if (!response.ok) throw new Error(t(data.error || 'Sorğu uğursuz oldu.'));
+          if (!response.ok) {
+            const error = new Error(t(data.error || 'Sorğu uğursuz oldu.'));
+            error.field = data.field;
+            throw error;
+          }
           return data;
         } finally {
           pendingLoadingRequests = Math.max(0, pendingLoadingRequests - 1);
@@ -531,6 +549,102 @@
       function showMessage(element, message, error) {
         element.textContent = t(message);
         element.className = `msg${message ? (error ? ' err' : ' ok') : ''}`;
+      }
+
+      const settingsFieldIds = new Set([
+        'stampGoalInput',
+        'cashierPinInput',
+        'bonusModeInput',
+        'bonusValueInput',
+        'rewardTextInput',
+        'restaurantNameInput',
+        'aboutInput',
+        'addressInput',
+        'restaurantPhoneInput',
+        'instagramInput',
+        'menuInput'
+      ]);
+
+      function clearSettingsFieldErrors() {
+        document.querySelectorAll('#settingsForm .field-error').forEach(element => {
+          element.textContent = '';
+        });
+        settingsFieldIds.forEach(id => document.getElementById(id).removeAttribute('aria-invalid'));
+      }
+
+      function showSettingsFieldError(field, message) {
+        if (!settingsFieldIds.has(field)) return false;
+        const input = document.getElementById(field);
+        const errorElement = document.getElementById(`${field}Error`);
+        if (!input || !errorElement) return false;
+        input.setAttribute('aria-invalid', 'true');
+        errorElement.textContent = message;
+        return true;
+      }
+
+      function validateSettingsFields() {
+        let valid = true;
+        const setError = (field, message, replacements) => {
+          showSettingsFieldError(field, t(message, replacements));
+          valid = false;
+        };
+        const textFields = [
+          { field: 'restaurantNameInput', minimum: 2, maximum: 200 },
+          { field: 'aboutInput', minimum: 2, maximum: 10000, optional: true },
+          { field: 'addressInput', minimum: 2, maximum: 1000 },
+          { field: 'rewardTextInput', maximum: 80, optional: true },
+          { field: 'restaurantPhoneInput', maximum: 50, optional: true },
+          { field: 'instagramInput', maximum: 255, optional: true }
+        ];
+        textFields.forEach(({ field, minimum = 0, maximum, optional = false }) => {
+          const value = document.getElementById(field).value.trim();
+          const length = Array.from(value).length;
+          if (optional && length === 0) return;
+          if (length < minimum) {
+            setError(
+              field,
+              optional
+                ? 'Boş ola bilər və ya minimum {{minimum}} simvol olmalıdır.'
+                : 'Minimum {{minimum}} simvol olmalıdır.',
+              { minimum }
+            );
+          } else if (length > maximum) {
+            setError(field, 'Maksimum {{maximum}} simvol ola bilər.', { maximum });
+          }
+        });
+
+        const stampGoal = Number(document.getElementById('stampGoalInput').value);
+        if (!Number.isInteger(stampGoal) || stampGoal < 1 || stampGoal > 20) {
+          setError('stampGoalInput', 'Möhür sayı 1-20 arası tam ədəd olmalıdır.');
+        }
+
+        const newPin = document.getElementById('cashierPinInput').value.trim();
+        if (newPin && !/^\d{4}$/.test(newPin)) {
+          setError('cashierPinInput', 'Kassir PİN kodu 4 rəqəm olmalıdır.');
+        }
+
+        const bonusMode = document.getElementById('bonusModeInput').value;
+        if (bonusMode !== 'fixed' && bonusMode !== 'percent') {
+          setError('bonusModeInput', 'Bonus rejimi düzgün seçilməyib.');
+        }
+        const bonusValueText = document.getElementById('bonusValueInput').value.trim();
+        const bonusValue = Number(bonusValueText);
+        if (
+          !bonusValueText ||
+          !Number.isFinite(bonusValue) ||
+          bonusValue < 0 ||
+          Math.round(bonusValue * 100) !== bonusValue * 100 ||
+          (bonusMode === 'percent' && bonusValue > 100) ||
+          (bonusMode === 'fixed' && bonusValue > 99999999.99)
+        ) {
+          setError(
+            'bonusValueInput',
+            bonusMode === 'percent'
+              ? 'Bonus faizi 0-100 arası olmalıdır.'
+              : 'Bonus dəyərini düzgün daxil edin.'
+          );
+        }
+        return valid;
       }
 
       function showToast(message) {
@@ -1045,12 +1159,16 @@
         event.preventDefault();
         const button = document.getElementById('saveSettingsBtn');
         const message = document.getElementById('settingsMsg');
+        clearSettingsFieldErrors();
+        showMessage(message, '', false);
+        if (!validateSettingsFields()) return;
+
         let menu;
         try {
           menu = JSON.parse(document.getElementById('menuInput').value || '[]');
           if (!menu || typeof menu !== 'object') throw new Error('Menyu JSON obyekt və ya siyahı olmalıdır.');
         } catch (error) {
-          showMessage(message, `Menyu JSON xətası: ${error.message}`, true);
+          showSettingsFieldError('menuInput', `Menyu JSON xətası: ${error.message}`);
           return;
         }
         const bonusMode = document.getElementById('bonusModeInput').value;
@@ -1085,7 +1203,9 @@
           fillSettings(restaurant);
           showMessage(message, 'Dəyişikliklər yadda saxlanıldı.', false);
         } catch (error) {
-          showMessage(message, error.message || 'Dəyişiklikləri yadda saxlamaq alınmadı.', true);
+          if (!showSettingsFieldError(error.field, error.message || 'Dəyişiklikləri yadda saxlamaq alınmadı.')) {
+            showMessage(message, error.message || 'Dəyişiklikləri yadda saxlamaq alınmadı.', true);
+          }
         } finally {
           button.disabled = false;
         }
