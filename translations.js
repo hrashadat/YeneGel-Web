@@ -27,8 +27,8 @@
     'Yüklənir...': ['Загрузка...', 'Loading...'],
     'Yüklənir': ['Загрузка', 'Loading'],
     '0 / 5 möhür': ['0 / 5 печатей', '0 / 5 stamps'],
-    'Toplam hesab': ['Общая сумма покупок', 'Total spent'],
-    'Toplam hesab: {{amount}} AZN': ['Общая сумма покупок: {{amount}} AZN', 'Total spent: {{amount}} AZN'],
+    'Toplam ödənilən hesab': ['Общая сумма оплаченных счетов', 'Total paid amount'],
+    'Toplam ödənilən hesab: {{amount}} AZN': ['Общая сумма оплаченных счетов: {{amount}} AZN', 'Total paid amount: {{amount}} AZN'],
     'Geri alınacaq əməliyyat tapılmadı.': ['Не найдена операция для отмены.', 'No operation was found to undo.'],
     'Möhür əməliyyatı bazada tamamlandı, amma kartın yenilənmiş məlumatını oxumaq alınmadı. Personel ekranını yeniləyin.': [
       'Операция с печатью сохранена, но не удалось загрузить обновлённые данные карты. Обновите панель персонала.',
@@ -116,7 +116,7 @@
     'Sorğu tamamlanmadı.': ['Запрос не выполнен.', 'Request did not complete.'],
     'Sorğu uğursuz oldu.': ['Не удалось выполнить запрос.', 'Request failed.'],
     'Serverlə əlaqə alınmadı.': ['Не удалось связаться с сервером.', 'Could not connect to the server.'],
-    'Səhifəni birbaşa fayl kimi açmaq olmaz. Netlify Dev ilə serverdən açın.': ['Откройте страницу через Netlify Dev, а не как локальный файл.', 'Open this page through Netlify Dev, not as a local file.'],
+    'Səhifəni birbaşa fayl kimi açmaq olmaz. Veb server üzərindən açın.': ['Нельзя открывать страницу как локальный файл. Откройте её через веб-сервер.', 'This page cannot be opened as a local file. Open it through a web server.'],
     'Təhlükəsizlik xidməti hazır deyil. Supabase mühit dəyişənlərini yoxlayın və tələb olunan SQL migration-ı tətbiq edin.': ['Служба безопасности не готова. Проверьте переменные среды Supabase и примените необходимую SQL-миграцию.', 'The security service is not ready. Check Supabase environment variables and apply the required SQL migration.'],
     'Giriş alınmadı.': ['Не удалось войти.', 'Sign-in failed.'],
     'Qeydiyyat tamamlanmadı.': ['Регистрация не завершена.', 'Registration did not complete.'],
@@ -150,6 +150,11 @@
     'Möhür əməliyyatını geri almaq mümkün olmadı.': ['Не удалось отменить операцию с печатью.', 'Could not undo the stamp operation.'],
     'Sorğular çox tez-tez göndərilir. Bir az sonra yenidən cəhd edin.': ['Слишком много запросов. Попробуйте позже.', 'Too many requests. Please try again shortly.'],
     'Xidmət müvəqqəti əlçatan deyil.': ['Сервис временно недоступен.', 'Service is temporarily unavailable.'],
+    'Müştəri siyahısı yüklənmədi.': ['Не удалось загрузить список клиентов.', 'Could not load the customer list.'],
+    'Zəhmət olmasa xətalı sahələri düzəldin.': ['Пожалуйста, исправьте поля с ошибками.', 'Please fix the highlighted fields.'],
+    'Bu restoran üçün admin giriş kodu təyin edilməyib.': ['Для этого ресторана не задан код администратора.', 'No admin access code is configured for this restaurant.'],
+    'Supabase-də redeem_customer_bonus funksiyası və ya parametr imzası tapılmadı. SQL migration-ı tətbiq edin.': ['В Supabase не найдена функция redeem_customer_bonus или её сигнатура параметров не совпадает. Примените SQL-миграцию.', 'The Supabase redeem_customer_bonus function or its parameter signature was not found. Apply the SQL migration.'],
+    'Server xətası (HTTP {{status}})': ['Ошибка сервера (HTTP {{status}})', 'Server error (HTTP {{status}})'],
     'QR kod kitabxanası yüklənmədi. İnternet bağlantısını yoxlayın.': ['Не удалось загрузить библиотеку QR-кодов. Проверьте подключение к интернету.', 'QR library failed to load. Check your internet connection.'],
     'QR skaner kitabxanası yüklənmədi. İnternet bağlantısını yoxlayın.': ['Не удалось загрузить библиотеку сканера QR-кодов. Проверьте подключение к интернету.', 'QR scanner library failed to load. Check your internet connection.'],
     'Müştəri kartı yoxlanılır...': ['Проверка карты клиента...', 'Checking customer card...'],
@@ -213,8 +218,7 @@
     'Restoran ayarları yenilənmədi.': ['Не удалось обновить настройки ресторана.', 'Restaurant settings could not be updated.'],
     'Çıxış məlumatını bu cihazdan silmək mümkün olmadı.': ['Не удалось удалить данные выхода с этого устройства.', 'Could not clear sign-out data from this device.'],
     'Bu cihazda müştəri məlumatını oxumaq mümkün olmadı.': ['Не удалось прочитать данные клиента на этом устройстве.', 'Could not read customer data on this device.'],
-    'Müştəri məlumatı cavabda tapılmadı.': ['В ответе отсутствуют данные клиента.', 'Customer data is missing from the response.'],
-    'QR kod kitabxanası yüklənmədi. İnternet bağlantısını yoxlayın.': ['Не удалось загрузить библиотеку QR-кодов. Проверьте подключение к интернету.', 'QR library failed to load. Check your internet connection.']
+    'Müştəri məlumatı cavabda tapılmadı.': ['В ответе отсутствуют данные клиента.', 'Customer data is missing from the response.']
   };
 
   const languageNames = ['az', 'ru', 'en'];

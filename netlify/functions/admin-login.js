@@ -3,7 +3,7 @@ const JSON_HEADERS = {
 };
 const { constantTimeEqual, isBoundedString, isValidRestaurantSlug, parseJsonObject } = require('../lib/request');
 const { secureHandler } = require('../lib/security');
-const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
+const { getSupabaseConfig, getSupabaseErrorMessage, sbFetch } = require('../lib/supabase');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -56,6 +56,14 @@ exports.handler = async (event) => {
       };
     }
 
+    if (!String(restaurant.admin_code || '').trim()) {
+      return {
+        statusCode: 403,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ error: 'Bu restoran üçün admin giriş kodu təyin edilməyib.', code: 'ADMIN_CODE_NOT_CONFIGURED' })
+      };
+    }
+
     if (!constantTimeEqual(String(restaurant.admin_code || '').trim(), accessCode)) {
       return {
         statusCode: 401,
@@ -78,12 +86,17 @@ exports.handler = async (event) => {
       body: JSON.stringify({ ok: true, restaurant: safeRestaurant })
     };
   } catch (err) {
+    console.error('admin-login error:', err);
     return {
       statusCode: 500,
       headers: JSON_HEADERS,
-      body: JSON.stringify({ error: 'Server xətası: ' + err.message })
+      body: JSON.stringify({ error: getSupabaseErrorMessage(err), code: err.code || 'SERVER_ERROR' })
     };
   }
 };
 
-exports.handler = secureHandler('admin-login', { limit: 8, windowSeconds: 60 }, exports.handler);
+exports.handler = secureHandler('admin-login', {
+  limit: 8,
+  windowSeconds: 60,
+  preserveServerErrorResponse: true
+}, exports.handler);

@@ -1,7 +1,7 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const { constantTimeEqual, isBoundedString, isValidRestaurantSlug, parseJsonObject } = require('../lib/request');
 const { secureHandler } = require('../lib/security');
-const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
+const { getSupabaseConfig, getSupabaseErrorMessage, sbFetch } = require('../lib/supabase');
 
 function fieldError(field, error) {
   return {
@@ -112,6 +112,9 @@ exports.handler = async (event) => {
       return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran tapılmadı.' }) };
     }
 
+    if (!String(existing.admin_code || '').trim()) {
+      return { statusCode: 403, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Bu restoran üçün admin giriş kodu təyin edilməyib.', code: 'ADMIN_CODE_NOT_CONFIGURED' }) };
+    }
     if (!constantTimeEqual(String(existing.admin_code || '').trim(), accessCode)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Xüsusi giriş kodu yanlışdır.' }) };
     }
@@ -158,12 +161,17 @@ exports.handler = async (event) => {
     };
 
   } catch (err) {
+    console.error('update-restaurant error:', err);
     return {
       statusCode: 500,
       headers: JSON_HEADERS,
-      body: JSON.stringify({ error: 'Server xətası: ' + err.message })
+      body: JSON.stringify({ error: getSupabaseErrorMessage(err), code: err.code || 'SERVER_ERROR' })
     };
   }
 };
 
-exports.handler = secureHandler('update-restaurant', { limit: 20, maxBodyBytes: 524
+exports.handler = secureHandler('update-restaurant', {
+  limit: 20,
+  maxBodyBytes: 524288,
+  preserveServerErrorResponse: true
+}, exports.handler);

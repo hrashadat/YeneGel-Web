@@ -1,9 +1,11 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const { ensureCustomerCard } = require('../lib/customer-cards');
 const {
+  getCustomerColumns,
   isValidAccessCode,
   isValidAccountName,
   normalizeAccountName,
+  resolveCustomerSchemaColumns,
   verifyAccessCode
 } = require('../lib/customer-credentials');
 const { normalizeCard } = require('../lib/loyalty');
@@ -57,13 +59,31 @@ exports.handler = async event => {
       return jsonResponse(404, { error: 'Restoran tapılmadı.' });
     }
 
+    const customerColumns = await getCustomerColumns(url, key);
+    const { accountColumn, credentialColumns } = resolveCustomerSchemaColumns(customerColumns);
+    const selectColumns = [
+      'id',
+      accountColumn,
+      ...credentialColumns,
+      ...['first_name', 'last_name', 'phone'].filter(column => customerColumns.has(column))
+    ];
+
     const customers = await sbFetch(
       url,
       key,
-      `customers?restaurant_id=eq.${encodeQueryValue(restaurant.id)}&account_name=eq.${encodeQueryValue(accountName)}&select=id,account_name,access_code,first_name,last_name,phone`
+      `customers?restaurant_id=eq.${encodeQueryValue(restaurant.id)}&${accountColumn}=eq.${encodeQueryValue(accountName)}&select=${selectColumns.join(',')}`
     );
     const customer = customers?.[0];
-    if (!customer || !(await verifyAccessCode(accessCode, customer.access_code))) {
+    let codeMatches = false;
+    if (customer) {
+      for (const column of credentialColumns) {
+        if (customer[column] && await verifyAccessCode(accessCode, customer[column])) {
+          codeMatches = true;
+          break;
+        }
+      }
+    }
+    if (!customer || !codeMatches) {
       return jsonResponse(401, { error: 'Hesab adı və ya kod yanlışdır.' });
     }
 
@@ -76,11 +96,12 @@ exports.handler = async event => {
     const card = cards?.[0];
     if (!card) throw new Error('Müştəri kartı hazırlana bilmədi.');
 
+    const resolvedAccountName = customer[accountColumn] || customer.account_name || customer.username || accountName;
     return jsonResponse(200, {
       customer: {
         id: customer.id,
-        account_name: customer.account_name,
-        first_name: customer.first_name || customer.account_name,
+        account_name: resolvedAccountName,
+        first_name: customer.first_name || resolvedAccountName,
         last_name: customer.last_name || '',
         phone: customer.phone || null
       },
@@ -95,4 +116,8 @@ exports.handler = async event => {
   }
 };
 
-exports.handler = secureHandler('customer-login', { limit: 30, windowSeconds: 60 }, exports.handler);
+exports.handler = secureHandler('customer-login', {
+  limit: 30,
+  windowSeconds: 60,
+  preserveServerErrorResponse: true
+}, exports.handler);

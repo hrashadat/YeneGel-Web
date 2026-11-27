@@ -1,10 +1,12 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const { ensureCustomerCard } = require('../lib/customer-cards');
 const {
+  getCustomerColumns,
   hashAccessCode,
   isValidAccessCode,
   isValidAccountName,
-  normalizeAccountName
+  normalizeAccountName,
+  resolveCustomerSchemaColumns
 } = require('../lib/customer-credentials');
 const { encodeQueryValue, isValidRestaurantSlug, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, getSupabaseErrorMessage, sbFetch } = require('../lib/supabase');
@@ -16,20 +18,6 @@ function jsonResponse(statusCode, body) {
     headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
     body: JSON.stringify(body)
   };
-}
-
-async function getCustomerColumns(url, key) {
-  const schema = await sbFetch(url, key, '', {
-    headers: { Accept: 'application/openapi+json' }
-  });
-  const definition = schema?.definitions?.customers ||
-    schema?.definitions?.['public.customers'] ||
-    schema?.components?.schemas?.customers;
-  const columns = Object.keys(definition?.properties || {});
-  if (!columns.length) {
-    throw new Error('Supabase API sxemində customers cədvəlinin sütunları tapılmadı.');
-  }
-  return new Set(columns);
 }
 
 exports.handler = async event => {
@@ -71,22 +59,7 @@ exports.handler = async event => {
     }
 
     const customerColumns = await getCustomerColumns(url, key);
-    const accountColumn = customerColumns.has('account_name')
-      ? 'account_name'
-      : customerColumns.has('username')
-        ? 'username'
-        : null;
-    const credentialColumn = customerColumns.has('password_hash')
-      ? 'password_hash'
-      : customerColumns.has('pin_hash')
-        ? 'pin_hash'
-        : null;
-    if (!customerColumns.has('id') || !customerColumns.has('restaurant_id')) {
-      throw new Error('customers cədvəlində id və restaurant_id sütunları yoxdur.');
-    }
-    if (!accountColumn || !credentialColumn) {
-      throw new Error('customers cədvəlində hesab adı və parol heşi üçün uyğun sütun yoxdur.');
-    }
+    const { accountColumn, credentialColumns } = resolveCustomerSchemaColumns(customerColumns);
 
     const existing = await sbFetch(
       url,
@@ -100,9 +73,13 @@ exports.handler = async event => {
     const accessCodeHash = await hashAccessCode(accessCode);
     const customerData = {
       restaurant_id: restaurant.id,
-      [accountColumn]: accountName,
-      [credentialColumn]: accessCodeHash
+      [accountColumn]: accountName
     };
+    const writableCredentialColumns = credentialColumns.filter(column => column !== 'pin_hash');
+    const targetCredentialColumns = writableCredentialColumns.length ? writableCredentialColumns : credentialColumns;
+    targetCredentialColumns.forEach(column => {
+      customerData[column] = accessCodeHash;
+    });
     if (customerColumns.has('first_name')) customerData.first_name = accountName;
     if (customerColumns.has('last_name')) customerData.last_name = '';
     if (customerColumns.has('phone')) customerData.phone = null;
@@ -151,4 +128,8 @@ exports.handler = async event => {
   }
 };
 
-exports.handler = secureHandler('customer-register', { limit: 20, windowSeconds: 60 }, exports.handler);
+exports.handler = secureHandler('customer-register', {
+  limit: 20,
+  windowSeconds: 60,
+  preserveServerErrorResponse: true
+}, exports.handler);
