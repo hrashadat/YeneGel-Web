@@ -87,11 +87,14 @@ exports.handler = async event => {
       const databaseMessage = String(error.message || 'Naməlum xəta.')
         .replace(/\s+/g, ' ')
         .slice(0, 180);
-      const isBusinessError = /Müştəri tapılmadı|Müştəri kartı tapılmadı|Möhür silmək üçün kartda möhür yoxdur|Geri alınacaq əməliyyat tapılmadı|Restoran tapılmadı|Düzgün hesab məbləği daxil edin|Möhür əməliyyatı etibarsızdır/i
-        .test(databaseMessage);
+      const isAmountError = /Düzgün hesab məbləği daxil edin/i.test(databaseMessage);
+      const isBusinessError = /Müştəri tapılmadı|Müştəri kartı tapılmadı|Möhür silmək üçün kartda möhür yoxdur|Geri alınacaq əməliyyat tapılmadı|Restoran tapılmadı|Möhür əməliyyatı etibarsızdır/i
+        .test(databaseMessage) || (stampDelta === 1 && isAmountError);
       const isRpcSignatureError = ['PGRST202', 'PGRST203', '42883'].includes(error.code);
       const message = isRpcSignatureError
         ? 'Supabase-də apply_customer_stamp_transaction funksiyası və ya parametr imzası tapılmadı. SQL migration-ları yoxlayın.'
+        : stampDelta === -1 && isAmountError
+          ? 'Supabase-də məbləğsiz möhür silmə SQL migration-ı tətbiq edilməyib. SQL migration-ları yoxlayın.'
         : isBusinessError
           ? databaseMessage
           : `Supabase möhür əməliyyatı xətası${error.code ? ` (${error.code})` : ''}: ${databaseMessage}`;

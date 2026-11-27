@@ -1,5 +1,6 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const { constantTimeEqual, parseJsonObject } = require('../lib/request');
+const { normalizeCard } = require('../lib/loyalty');
+const { constantTimeEqual, isValidUuid, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
 const { secureHandler } = require('../lib/security');
 
@@ -31,7 +32,7 @@ exports.handler = async event => {
     const restaurants = await sbFetch(
       url,
       key,
-      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code`
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code,stamp_goal,bonus_mode,bonus_fixed_amount,bonus_percent`
     );
     const restaurant = restaurants?.[0];
     if (!restaurant) {
@@ -50,7 +51,22 @@ exports.handler = async event => {
         p_stamp_delta: 1
       })
     });
-    return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(result) };
+    if (!isValidUuid(result?.card?.id)) {
+      console.error('add-stamp RPC completed without returning a valid card id:', {
+        restaurantId: restaurant.id,
+        customerId
+      });
+      return {
+        statusCode: 502,
+        headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
+        body: JSON.stringify({ error: 'Möhür əməliyyatı tamamlandı, lakin yenilənmiş kart alınmadı.' })
+      };
+    }
+    return {
+      statusCode: 200,
+      headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
+      body: JSON.stringify({ ...result, card: normalizeCard(restaurant, result.card) })
+    };
   } catch (error) {
     console.error('add-stamp error:', error);
     return { statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Server xətası.' }) };
