@@ -856,7 +856,10 @@
       }
 
       function getBonusRedemptionAmounts(card) {
-        const cardBonus = Number(card?.bonus_cycle_balance ?? card?.bonus_balance ?? 0);
+        const rawCycle = card?.bonus_cycle_balance;
+        const cardBonus = rawCycle !== undefined && rawCycle !== null
+          ? Number(rawCycle)
+          : Number(card?.bonus_balance ?? 0);
         const carryoverValue = Number(card?.bonus_carryover || 0);
         const currentBonus = Number.isFinite(cardBonus) ? Math.max(0, cardBonus) : 0;
         const carryoverBonus = Number.isFinite(carryoverValue) ? Math.max(0, carryoverValue) : 0;
