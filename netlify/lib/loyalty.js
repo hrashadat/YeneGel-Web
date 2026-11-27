@@ -1,4 +1,4 @@
-function getStampGoal(restaurant) {
+﻿function getStampGoal(restaurant) {
   const goal = Number(restaurant?.stamp_goal);
   return Number.isInteger(goal) && goal > 0 ? goal : 5;
 }
@@ -39,26 +39,32 @@ function getStoredBonusBalance(card) {
   return Number.isFinite(balance) ? Math.max(0, roundMoney(balance)) : 0;
 }
 
-function getBonusBalance(restaurant, card) {
-  const unlocked = getStampCount(card) >= getStampGoal(restaurant);
-  const wasUnlocked = card?.reward_unlocked === true;
-  const mode = String(restaurant?.bonus_mode || 'fixed').trim().toLowerCase();
-  const pendingFixedBonus = unlocked && !wasUnlocked && mode !== 'percent'
-    ? calculateBonusAmount(restaurant, 0)
-    : 0;
-  return roundMoney(getStoredBonusBalance(card) + getStoredBonusCarryover(card) + pendingFixedBonus);
-}
-
 function getStoredBonusCarryover(card) {
   const balance = Number(card?.bonus_carryover);
   return Number.isFinite(balance) ? Math.max(0, roundMoney(balance)) : 0;
+}
+
+function getBonusCycleBalance(restaurant, card) {
+  const unlocked = getStampCount(card) >= getStampGoal(restaurant);
+  if (!unlocked) return 0;
+  const wasUnlocked = card?.reward_unlocked === true;
+  const mode = String(restaurant?.bonus_mode || 'fixed').trim().toLowerCase();
+  const pendingFixedBonus = !wasUnlocked && mode !== 'percent'
+    ? calculateBonusAmount(restaurant, 0)
+    : 0;
+  return roundMoney(Math.max(0, getStoredBonusBalance(card) + pendingFixedBonus));
+}
+
+function getBonusBalance(restaurant, card) {
+  return roundMoney(getBonusCycleBalance(restaurant, card) + getStoredBonusCarryover(card));
 }
 
 function normalizeCard(restaurant, card) {
   const stampsCount = getStampCount(card);
   const totalSpent = getTotalSpent(card);
   const bonusCarryover = getStoredBonusCarryover(card);
-  const bonusBalance = getBonusBalance(restaurant, card);
+  const bonusCycleBalance = getBonusCycleBalance(restaurant, card);
+  const bonusBalance = roundMoney(bonusCycleBalance + bonusCarryover);
   return {
     ...card,
     stamps_count: stampsCount,
@@ -66,13 +72,14 @@ function normalizeCard(restaurant, card) {
     total_spent: totalSpent,
     bonus_balance: bonusBalance,
     bonus_carryover: bonusCarryover,
-    bonus_cycle_balance: roundMoney(Math.max(0, bonusBalance - bonusCarryover))
+    bonus_cycle_balance: bonusCycleBalance
   };
 }
 
 module.exports = {
   calculateBonusAmount,
   getBonusBalance,
+  getBonusCycleBalance,
   getStoredBonusCarryover,
   getStoredBonusBalance,
   getStampCount,
