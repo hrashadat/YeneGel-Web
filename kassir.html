@@ -520,16 +520,44 @@
           if (window.location.protocol === 'file:') {
             throw new Error(t('Səhifəni birbaşa fayl kimi açmaq olmaz. Netlify Dev ilə serverdən açın.'));
           }
-          const response = await fetch(url, options);
-          const data = await response.json().catch(() => ({}));
-          if (data.code === 'RATE_LIMIT_UNAVAILABLE') {
-            const message = data.error === 'Xidmət müvəqqəti əlçatan deyil.'
-              ? t('Təhlükəsizlik xidməti hazır deyil. Supabase mühit dəyişənlərini yoxlayın və tələb olunan SQL migration-ı tətbiq edin.')
-              : t(data.error || 'Xidmət müvəqqəti əlçatan deyil.');
-            throw new Error(message);
+          const endpoint = String(url).split('?')[0];
+          let response;
+          try {
+            response = await fetch(url, options);
+          } catch (error) {
+            console.error('Kassir API sorğusu cavab almadan uğursuz oldu:', {
+              endpoint,
+              message: error.message || 'Şəbəkə xətası.'
+            });
+            throw error;
+          }
+          const responseText = await response.text();
+          let data = {};
+          if (responseText) {
+            try {
+              const parsed = JSON.parse(responseText);
+              data = parsed && typeof parsed === 'object'
+                ? parsed
+                : { error: typeof parsed === 'string' ? parsed : '' };
+            } catch {
+              data = { error: responseText };
+            }
           }
           if (!response.ok) {
-            const error = new Error(t(data.error || 'Sorğu uğursuz oldu.'));
+            const detail = data.error || response.statusText || 'Sorğu uğursuz oldu.';
+            console.error('Kassir API sorğusu uğursuz oldu:', {
+              endpoint,
+              status: response.status,
+              code: data.code || null,
+              message: detail
+            });
+            const message = data.code === 'RATE_LIMIT_UNAVAILABLE' &&
+              data.error === 'Xidmət müvəqqəti əlçatan deyil.'
+              ? t('Təhlükəsizlik xidməti hazır deyil. Supabase mühit dəyişənlərini yoxlayın və tələb olunan SQL migration-ı tətbiq edin.')
+              : t(detail);
+            const error = new Error(message);
+            error.status = response.status;
+            error.code = data.code;
             error.field = data.field;
             throw error;
           }
@@ -933,44 +961,13 @@
             })
           });
           writeCompleted = true;
-          const cardId = result.card && result.card.id;
-          if (!cardId) {
-            throw new Error('Möhür əməliyyatı tamamlandı, lakin cavabda kart ID-si yoxdur.');
-          }
-          let updatedCustomer = customer;
-          let updatedCard = result.card;
-          let refreshFailed = false;
-          try {
-            const customerData = await requestJson('/.netlify/functions/cashier-customer', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                slug,
-                pin,
-                customer_id: customerId,
-                card_id: cardId
-              })
-            });
-            if (!customerData.customer || !customerData.card) {
-              throw new Error('Kartın yenilənmiş cavabı natamamdır.');
-            }
-            updatedCustomer = customerData.customer;
-            updatedCard = customerData.card;
-          } catch (refreshError) {
-            console.warn('Kartı təzədən oxumaq alınmadı; cashier-stamp cavabındakı bazadan oxunmuş məlumat istifadə edilir:', refreshError);
-            refreshFailed = true;
-          }
-          if (!updatedCard) {
+          if (!result.card) {
             throw new Error('Möhür əməliyyatı tamamlandı, lakin cavabda yenilənmiş kart yoxdur.');
           }
-          selectedCustomer = updatedCustomer;
-          renderScannedCustomer(updatedCard);
+          selectedCustomer = customer;
+          renderScannedCustomer(result.card);
           notifyCustomerCardUpdated(customerId);
-          showMessage(
-            message,
-            refreshFailed ? 'Möhür bazada tamamlandı; yenilənmiş kart məlumatı server cavabından göstərilir.' : '',
-            false
-          );
+          showMessage(message, '', false);
           if (stampDelta > 0) {
             await showStampAddedLoading();
             showToast('Möhür əlavə edildi');
