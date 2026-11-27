@@ -200,6 +200,11 @@ BEGIN
     );
   END IF;
 
+  UPDATE public.loyalty_cards
+  SET total_spent = v_next_spent
+  WHERE id = v_card.id
+  RETURNING * INTO v_card;
+
   RETURN jsonb_build_object(
     'card', to_jsonb(v_card),
     'stamp_delta', v_delta,

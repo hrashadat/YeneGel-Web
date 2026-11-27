@@ -1,5 +1,6 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const { constantTimeEqual, isValidRestaurantSlug, isValidUuid, parseJsonObject } = require('../lib/request');
+const { normalizeCard } = require('../lib/loyalty');
 const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
 const { secureHandler } = require('../lib/security');
 
@@ -47,7 +48,7 @@ exports.handler = async event => {
     const rows = await sbFetch(
       url,
       key,
-      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code`
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code,stamp_goal,bonus_mode,bonus_fixed_amount,bonus_percent`
     );
     const restaurant = rows?.[0];
     if (!restaurant) {
@@ -105,10 +106,51 @@ exports.handler = async event => {
         })
       };
     }
+
+    let cards;
+    try {
+      cards = await sbFetch(
+        url,
+        key,
+        `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customerId)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`
+      );
+    } catch (error) {
+      console.error('cashier-stamp card refresh failed after RPC succeeded:', {
+        status: error.status || null,
+        code: error.code || null,
+        message: error.message || 'Naməlum Supabase xətası.',
+        details: error.details || null,
+        hint: error.hint || null
+      });
+      return {
+        statusCode: 502,
+        headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
+        body: JSON.stringify({
+          error: 'Möhür əməliyyatı bazada tamamlandı, amma kartın yenilənmiş məlumatını oxumaq alınmadı. Kassir ekranını yeniləyin.',
+          code: 'CARD_REFRESH_FAILED'
+        })
+      };
+    }
+
+    if (!Array.isArray(cards) || !cards[0]) {
+      console.error('cashier-stamp card refresh returned no loyalty_cards row after RPC succeeded:', {
+        restaurantId: restaurant.id,
+        customerId
+      });
+      return {
+        statusCode: 502,
+        headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
+        body: JSON.stringify({
+          error: 'Möhür əməliyyatı bazada tamamlandı, amma yenilənmiş müştəri kartı tapılmadı. Kassir ekranını yeniləyin.',
+          code: 'CARD_REFRESH_FAILED'
+        })
+      };
+    }
+
     return {
       statusCode: 200,
       headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
-      body: JSON.stringify(result)
+      body: JSON.stringify({ ...result, card: normalizeCard(restaurant, cards[0]) })
     };
 
   } catch (err) {

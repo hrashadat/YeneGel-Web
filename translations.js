@@ -29,6 +29,14 @@
     'Toplam hesab': ['Общая сумма покупок', 'Total spent'],
     'Toplam hesab: {{amount}} AZN': ['Общая сумма покупок: {{amount}} AZN', 'Total spent: {{amount}} AZN'],
     'Geri alınacaq əməliyyat tapılmadı.': ['Не найдена операция для отмены.', 'No operation was found to undo.'],
+    'Möhür əməliyyatı bazada tamamlandı, amma kartın yenilənmiş məlumatını oxumaq alınmadı. Kassir ekranını yeniləyin.': [
+      'Операция с печатью сохранена, но не удалось загрузить обновлённые данные карты. Обновите панель кассира.',
+      'The stamp operation was saved, but the updated card could not be loaded. Refresh the cashier panel.'
+    ],
+    'Möhür əməliyyatı bazada tamamlandı, amma yenilənmiş müştəri kartı tapılmadı. Kassir ekranını yeniləyin.': [
+      'Операция с печатью сохранена, но обновлённая карта клиента не найдена. Обновите панель кассира.',
+      'The stamp operation was saved, but the updated customer card was not found. Refresh the cashier panel.'
+    ],
     'Cari bonus': ['Текущий бонус', 'Current bonus'],
     'Supabase-də apply_customer_stamp_transaction funksiyası və ya parametr imzası tapılmadı. SQL migration-ları yoxlayın.': [
       'В Supabase не найдена функция apply_customer_stamp_transaction или её сигнатура параметров не совпадает. Проверьте SQL-миграции.',

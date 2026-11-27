@@ -444,6 +444,7 @@
       const clearedScanners = new WeakSet();
       let adminCode = '';
       let lastScannedCard = null;
+      let stampSubmissionInProgress = false;
       document.getElementById('customerPageLink').href = `index.html?slug=${encodeURIComponent(slug)}`;
 
       const applyTheme = mode => {
@@ -784,13 +785,14 @@
       }
 
       async function submitStamp(stampDelta, pin = cashierPin, feedbackElement = null) {
-        if (!selectedCustomer) return;
+        if (!selectedCustomer || stampSubmissionInProgress) return false;
         const amount = stampDelta === 1 ? Number(document.getElementById('amountInput').value) : 0;
         const message = feedbackElement || document.getElementById('operationMsg');
         if (stampDelta === 1 && (!Number.isFinite(amount) || amount <= 0)) {
           showMessage(message, 'Yeməyin məbləğini düzgün daxil edin.', true);
           return false;
         }
+        stampSubmissionInProgress = true;
         const buttons = [document.getElementById('addStampBtn'), document.getElementById('removeStampBtn')];
         buttons.forEach(button => { button.disabled = true; });
         showMessage(message, '', false);
@@ -821,6 +823,7 @@
           showMessage(message, error.message || 'Əməliyyat tamamlanmadı.', true);
           return false;
         } finally {
+          stampSubmissionInProgress = false;
           buttons.forEach(button => { button.disabled = false; });
         }
       }
