@@ -1,7 +1,8 @@
 (function () {
   const translations = {
     'MÜŞTƏRİ KARTI': ['КАРТА КЛИЕНТА', 'CUSTOMER CARD'],
-    'Kassir/Admin girişi': ['Вход кассира/администратора', 'Cashier/Admin login'],
+    'Personel/Admin girişi': ['Вход персонала/администратора', 'Staff/Admin login'],
+    'Kassir/Admin girişi': ['Вход персонала/администратора', 'Staff/Admin login'],
     'Tema seçimi': ['Выбор темы', 'Theme selection'],
     'Dil seçimi': ['Выбор языка', 'Language selection'],
     'Giriş və qeydiyyat': ['Вход и регистрация', 'Sign-in and registration'],
@@ -29,13 +30,13 @@
     'Toplam hesab': ['Общая сумма покупок', 'Total spent'],
     'Toplam hesab: {{amount}} AZN': ['Общая сумма покупок: {{amount}} AZN', 'Total spent: {{amount}} AZN'],
     'Geri alınacaq əməliyyat tapılmadı.': ['Не найдена операция для отмены.', 'No operation was found to undo.'],
-    'Möhür əməliyyatı bazada tamamlandı, amma kartın yenilənmiş məlumatını oxumaq alınmadı. Kassir ekranını yeniləyin.': [
-      'Операция с печатью сохранена, но не удалось загрузить обновлённые данные карты. Обновите панель кассира.',
-      'The stamp operation was saved, but the updated card could not be loaded. Refresh the cashier panel.'
+    'Möhür əməliyyatı bazada tamamlandı, amma kartın yenilənmiş məlumatını oxumaq alınmadı. Personel ekranını yeniləyin.': [
+      'Операция с печатью сохранена, но не удалось загрузить обновлённые данные карты. Обновите панель персонала.',
+      'The stamp operation was saved, but the updated card could not be loaded. Refresh the staff panel.'
     ],
-    'Möhür əməliyyatı bazada tamamlandı, amma yenilənmiş müştəri kartı tapılmadı. Kassir ekranını yeniləyin.': [
-      'Операция с печатью сохранена, но обновлённая карта клиента не найдена. Обновите панель кассира.',
-      'The stamp operation was saved, but the updated customer card was not found. Refresh the cashier panel.'
+    'Möhür əməliyyatı bazada tamamlandı, amma yenilənmiş müştəri kartı tapılmadı. Personel ekranını yeniləyin.': [
+      'Операция с печатью сохранена, но обновлённая карта клиента не найдена. Обновите панель персонала.',
+      'The stamp operation was saved, but the updated customer card was not found. Refresh the staff panel.'
     ],
     'Cari bonus': ['Текущий бонус', 'Current bonus'],
     'Supabase-də apply_customer_stamp_transaction funksiyası və ya parametr imzası tapılmadı. SQL migration-ları yoxlayın.': [
@@ -47,25 +48,30 @@
     'Light': ['Светлая', 'Light'],
     'İşıqlı': ['Светлая', 'Light'],
     'Qaranlıq': ['Тёмная', 'Dark'],
-    'Kassir/Admin girişi': ['Вход кассира/администратора', 'Cashier/Admin login'],
-    'KASSİR VƏ ADMIN': ['КАССИР И АДМИНИСТРАТОР', 'CASHIER AND ADMIN'],
+    'PERSONEL VƏ ADMIN': ['ПЕРСОНАЛ И АДМИНИСТРАТОР', 'STAFF AND ADMIN'],
+    'KASSİR VƏ ADMIN': ['ПЕРСОНАЛ И АДМИНИСТРАТОР', 'STAFF AND ADMIN'],
     'Dark mode': ['Тёмная тема', 'Dark mode'],
     'Light mode': ['Светлая тема', 'Light mode'],
     'Müştəri səhifəsi': ['Страница клиента', 'Customer page'],
-    'Kassir panelinə giriş': ['Вход в панель кассира', 'Cashier panel login'],
-    'Davam etmək üçün restoranın 4 rəqəmli kassir PİN kodunu daxil edin.': ['Введите 4-значный PIN кассира, чтобы продолжить.', 'Enter the restaurant’s 4-digit cashier PIN to continue.'],
-    'Kassir PİN kodu': ['PIN кассира', 'Cashier PIN'],
+    'Personel panelinə giriş': ['Вход в панель персонала', 'Staff panel login'],
+    'Davam etmək üçün restoranın 4 rəqəmli personel PİN kodunu daxil edin.': ['Введите 4-значный PIN персонала, чтобы продолжить.', 'Enter the restaurant’s 4-digit staff PIN to continue.'],
+    'Personel PİN kodu': ['PIN персонала', 'Staff PIN'],
     'Daxil ol': ['Войти', 'Log in'],
     'Panel bölmələri': ['Разделы панели', 'Panel sections'],
-    'Kassir skaneri': ['Сканер кассира', 'Cashier scanner'],
+    'Personel skaneri': ['Сканер персонала', 'Staff scanner'],
     'Admin paneli': ['Панель администратора', 'Admin panel'],
-    'Kassir skaner paneli': ['Панель сканирования кассира', 'Cashier scanning panel'],
+    'Personel skaner paneli': ['Панель сканирования персонала', 'Staff scanning panel'],
     'Müştərinin QR kodunu kameraya göstərin. Kamera icazəsi üçün sayt HTTPS üzərindən açılmalıdır.': ['Покажите QR-код клиента камере. Для доступа к камере сайт должен работать через HTTPS.', 'Show the customer’s QR code to the camera. The site must use HTTPS for camera access.'],
     'Telefon:': ['Телефон:', 'Phone:'],
     'ID:': ['ID:', 'ID:'],
     'Yeməyin məbləği (AZN)': ['Сумма заказа (AZN)', 'Bill amount (AZN)'],
     'məs: 25.00': ['например: 25.00', 'e.g. 25.00'],
     '+ Möhür əlavə et': ['+ Добавить печать', '+ Add stamp'],
+    'Sonraya saxla': ['Сохранить на потом', 'Save for later'],
+    'Tam xanalar dolmadan bu əməliyyat mümkün deyil.': ['Это действие доступно только после заполнения всех ячеек.', 'This action is only available after all slots are filled.'],
+    'Möhür hədəfi tamamlanıb. Əvvəl bonusu istifadə edin və ya sonraya saxlayın.': ['Цель по печатям выполнена. Сначала спишите бонус или сохраните на потом.', 'Stamp goal reached. Redeem the bonus first or save it for later.'],
+    'Bonusu sonraya saxlamaq istəyirsiniz?': ['Сохранить бонус на потом?', 'Save bonus for later?'],
+    'Bonus sonraya saxlanıldı.': ['Бонус сохранён на потом.', 'Bonus saved for later.'],
     'Başqa müştərini skan et': ['Сканировать другого клиента', 'Scan another customer'],
     'Təhlükəli əməliyyatlar': ['Опасные операции', 'Dangerous actions'],
     '− Möhür sil': ['− Удалить печать', '− Remove stamp'],
@@ -76,7 +82,7 @@
     'Restoran ayarları': ['Настройки ресторана', 'Restaurant settings'],
     'Admin çıxışı': ['Выход администратора', 'Admin logout'],
     'Möhür sayı (hədəf, 1–20)': ['Количество печатей (цель, 1–20)', 'Stamp goal (1–20)'],
-    'Kassir PİN kodu (4 rəqəm)': ['PIN кассира (4 цифры)', 'Cashier PIN (4 digits)'],
+    'Personel PİN kodu (dəyişmək üçün yeni 4 rəqəm daxil edin)': ['PIN персонала (для изменения введите новый PIN из 4 цифр)', 'Staff PIN (enter a new 4-digit PIN to change)'],
     'Bonus rejimi': ['Режим бонуса', 'Bonus mode'],
     'Sabit məbləğ (AZN)': ['Фиксированная сумма (AZN)', 'Fixed amount (AZN)'],
     'Faiz (%)': ['Процент (%)', 'Percent (%)'],
@@ -104,7 +110,7 @@
     'Bonus': ['Бонус', 'Bonus'],
     'Qeydiyyat': ['Регистрация', 'Registered'],
     'Möhür silmək istədiyinizdən əminsinizmi?': ['Вы уверены, что хотите удалить печать?', 'Are you sure you want to remove a stamp?'],
-    'Davam etmək üçün kassir PİN kodunu daxil edin.': ['Введите PIN кассира, чтобы продолжить.', 'Enter the cashier PIN to continue.'],
+    'Davam etmək üçün personel PİN kodunu daxil edin.': ['Введите PIN персонала, чтобы продолжить.', 'Enter the staff PIN to continue.'],
     'Ləğv et': ['Отмена', 'Cancel'],
     'Davam et': ['Продолжить', 'Continue'],
     'Sorğu tamamlanmadı.': ['Запрос не выполнен.', 'Request did not complete.'],
@@ -123,7 +129,7 @@
     'Hesab adı və ya kod yanlışdır.': ['Неверное имя аккаунта или код.', 'Account name or code is incorrect.'],
     'Restoran tapılmadı.': ['Ресторан не найден.', 'Restaurant not found.'],
     'PİN kod yanlışdır.': ['Неверный PIN.', 'Incorrect PIN.'],
-    'Kassir PİN kodu yanlışdır.': ['Неверный PIN кассира.', 'Incorrect cashier PIN.'],
+    'Personel PİN kodu yanlışdır.': ['Неверный PIN персонала.', 'Incorrect staff PIN.'],
     'Admin giriş kodu yanlışdır.': ['Неверный код администратора.', 'Incorrect admin access code.'],
     'Xüsusi giriş kodu yanlışdır.': ['Неверный специальный код доступа.', 'Incorrect admin access code.'],
     'QR kod etibarsızdır.': ['Недействительный QR-код.', 'Invalid QR code.'],
@@ -182,11 +188,11 @@
     '{{count}} müştəri göstərilir.': ['Показано клиентов: {{count}}.', 'Showing {{count}} customers.'],
     'Əlaqə': ['Контакты', 'Contact'],
     'Origin not allowed': ['Источник запроса не разрешён.', 'Request origin is not allowed.'],
-    'Kassir PİN kodu (dəyişmək üçün yeni 4 rəqəm daxil edin)': ['PIN кассира (для изменения введите новый PIN из 4 цифр)', 'Cashier PIN (enter a new 4-digit PIN to change)'],
+    'Personel PİN kodu (dəyişmək üçün yeni 4 rəqəm daxil edin)': ['PIN персонала (для изменения введите новый PIN из 4 цифр)', 'Staff PIN (enter a new 4-digit PIN to change)'],
     'Restoran kodu: {{slug}}': ['Код ресторана: {{slug}}', 'Restaurant code: {{slug}}'],
     'Sorğu məlumatı etibarsızdır.': ['Данные запроса недействительны.', 'Invalid request data.'],
     'Möhür əməliyyatı etibarsızdır.': ['Недействительная операция с печатью.', 'Invalid stamp operation.'],
-    'Kassir PİN kodu 4 rəqəm olmalıdır.': ['PIN кассира должен состоять из 4 цифр.', 'Cashier PIN must contain 4 digits.'],
+    'Personel PİN kodu 4 rəqəm olmalıdır.': ['PIN персонала должен состоять из 4 цифр.', 'Staff PIN must contain 4 digits.'],
     'Bonus dəyərini düzgün daxil edin.': ['Введите корректное значение бонуса.', 'Enter a valid bonus value.'],
     'Bonus faizi 0-100 arası olmalıdır.': ['Процент бонуса должен быть от 0 до 100.', 'Bonus percentage must be between 0 and 100.'],
     'Möhür sayı 1-20 arası tam ədəd olmalıdır.': ['Количество печатей должно быть целым числом от 1 до 20.', 'Stamp goal must be a whole number from 1 to 20.'],
@@ -197,9 +203,9 @@
     'Maksimum {{maximum}} simvol ola bilər.': ['Максимум {{maximum}} символов.', 'No more than {{maximum}} characters are allowed.'],
     'Boş ola bilər və ya minimum {{minimum}} simvol olmalıdır.': ['Можно оставить пустым или ввести не менее {{minimum}} символов.', 'Leave blank or enter at least {{minimum}} characters.'],
     'Restoran məlumatlarının uzunluğu etibarsızdır.': ['Недопустимая длина данных ресторана.', 'Restaurant field length is invalid.'],
-    'Restoran, admin kodu və kassir PİN kodu tələb olunur.': ['Требуются ресторан, код администратора и PIN кассира.', 'Restaurant, admin code, and cashier PIN are required.'],
-    'Restoran kodu, admin kodu və kassir PİN kodu tələb olunur.': ['Требуются код ресторана, код администратора и PIN кассира.', 'Restaurant slug, admin code, and cashier PIN are required.'],
-    'Slug, admin kodu və cari kassir PİN kodu tələb olunur.': ['Требуются slug, код администратора и текущий PIN кассира.', 'Slug, admin code, and current cashier PIN are required.'],
+    'Restoran, admin kodu və personel PİN kodu tələb olunur.': ['Требуются ресторан, код администратора и PIN персонала.', 'Restaurant, admin code, and staff PIN are required.'],
+    'Restoran kodu, admin kodu və personel PİN kodu tələb olunur.': ['Требуются код ресторана, код администратора и PIN персонала.', 'Restaurant slug, admin code, and staff PIN are required.'],
+    'Slug, admin kodu və cari personel PİN kodu tələb olunur.': ['Требуются slug, код администратора и текущий PIN персонала.', 'Slug, admin code, and current staff PIN are required.'],
     'Bonus məbləği çox böyükdür.': ['Сумма бонуса слишком велика.', 'Bonus amount is too large.'],
     'Hesab məbləği çox böyükdür.': ['Сумма заказа слишком велика.', 'Bill amount is too large.'],
     'Müştəri kartı hazırlana bilmədi.': ['Не удалось создать карту клиента.', 'Could not create the customer card.'],
@@ -253,7 +259,7 @@
     document.documentElement.lang = language;
     const cashierPage = /(?:^|\/)kassir\.html$/i.test(window.location.pathname);
     document.title = cashierPage
-      ? ['Yenə gəl — Kassir və Admin', 'Yenə gəl — Кассир и администратор', 'Yenə gəl — Cashier & Admin'][languageNames.indexOf(language)]
+      ? ['Yenə gəl — Personel və Admin', 'Yenə gəl — Персонал и администратор', 'Yenə gəl — Staff & Admin'][languageNames.indexOf(language)]
       : ['Yenə gəl — Rəqəmsal Sadiqlik Kartı', 'Yenə gəl — Карта лояльности', 'Yenə gəl — Digital Loyalty Card'][languageNames.indexOf(language)];
 
     const textWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
