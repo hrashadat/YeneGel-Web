@@ -74,24 +74,35 @@ exports.handler = async event => {
             total_spent: 0,
             reward_unlocked: false,
             bonus_carryover: newCarryover,
-            bonus_balance: newCarryover
+            bonus_balance: 0
           })
         }
       );
 
-      const updatedCard = updatedCards?.[0] || {
+      const rawUpdated = updatedCards?.[0] || {
         ...card,
         stamps_count: 0,
         total_spent: 0,
         reward_unlocked: false,
         bonus_carryover: newCarryover,
-        bonus_balance: newCarryover
+        bonus_balance: 0
+      };
+
+      const normalized = normalizeCard(restaurant, rawUpdated);
+      const finalCard = {
+        ...normalized,
+        stamps_count: 0,
+        total_spent: 0,
+        reward_unlocked: false,
+        bonus_carryover: newCarryover,
+        bonus_cycle_balance: 0,
+        bonus_balance: 0
       };
 
       return {
         statusCode: 200,
         headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
-        body: JSON.stringify({ card: normalizeCard(restaurant, updatedCard) })
+        body: JSON.stringify({ card: finalCard })
       };
     }
 
