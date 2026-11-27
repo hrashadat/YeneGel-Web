@@ -154,6 +154,5 @@ exports.handler = async event => {
 
 exports.handler = secureHandler('cashier-stamp', {
   limit: 30,
-  preserveServerErrorResponse: true,
-  exposeRateLimitError: true
+  preserveServerErrorResponse: true
 }, exports.handler);

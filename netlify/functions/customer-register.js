@@ -124,12 +124,7 @@ exports.handler = async event => {
     }
 
     if (!customer?.id) throw new Error('Müştəri qeydiyyatı tamamlanmadı.');
-    try {
-      await ensureCustomerCard(url, key, restaurant.id, customer.id, legacyToken);
-    } catch (error) {
-      console.error('customer-register loyalty card error:', error.message || error);
-      throw error;
-    }
+    await ensureCustomerCard(url, key, restaurant.id, customer.id, legacyToken);
 
     return jsonResponse(201, {
       customer: {
@@ -141,7 +136,14 @@ exports.handler = async event => {
       }
     });
   } catch (error) {
-    console.error('customer-register error:', error);
+    console.error('customer-register error:', {
+      status: error.status || null,
+      code: error.code || null,
+      message: error.message || 'Naməlum xəta.',
+      details: error.details || null,
+      hint: error.hint || null,
+      cause: error.cause?.code || error.cause?.message || null
+    });
     return jsonResponse(500, {
       error: getSupabaseErrorMessage(error),
       code: error.code || 'SERVER_ERROR'

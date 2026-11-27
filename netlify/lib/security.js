@@ -1,6 +1,9 @@
 const { createHash } = require('crypto');
 const { getSupabaseConfig, sbFetch } = require('./supabase');
 
+const localRateLimitBuckets = new Map();
+const MAX_LOCAL_RATE_LIMIT_BUCKETS = 10000;
+
 const SECURITY_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
   'Cache-Control': 'no-store',
@@ -45,20 +48,59 @@ function getClientAddress(event) {
   return forwarded.length ? forwarded[forwarded.length - 1] : 'unknown';
 }
 
+function consumeLocalRateLimit(name, addressHash, limit, windowSeconds) {
+  const now = Date.now();
+  const windowMs = Math.max(1, windowSeconds) * 1000;
+  const currentBucket = Math.floor(now / windowMs);
+  const bucketKey = `${name}:${addressHash}`;
+  let bucket = localRateLimitBuckets.get(bucketKey);
+
+  if (!bucket || bucket.expiresAt <= now) {
+    bucket = { expiresAt: (currentBucket + 1) * windowMs, count: 0 };
+    localRateLimitBuckets.set(bucketKey, bucket);
+  }
+  bucket.count += 1;
+
+  if (localRateLimitBuckets.size > MAX_LOCAL_RATE_LIMIT_BUCKETS) {
+    for (const [key, entry] of localRateLimitBuckets) {
+      if (entry.expiresAt <= now) localRateLimitBuckets.delete(key);
+    }
+    while (localRateLimitBuckets.size > MAX_LOCAL_RATE_LIMIT_BUCKETS) {
+      localRateLimitBuckets.delete(localRateLimitBuckets.keys().next().value);
+    }
+  }
+
+  return bucket.count <= limit;
+}
+
 async function consumeRateLimit(event, name, limit, windowSeconds) {
-  const { url, key } = getSupabaseConfig();
   const addressHash = createHash('sha256')
     .update(`${name}:${getClientAddress(event)}`)
     .digest('hex');
-  const result = await sbFetch(url, key, 'rpc/consume_public_rate_limit', {
-    method: 'POST',
-    body: JSON.stringify({
-      p_rate_key: addressHash,
-      p_limit: limit,
-      p_window_seconds: windowSeconds
-    })
-  });
-  return result === true;
+  try {
+    const { url, key } = getSupabaseConfig();
+    const result = await sbFetch(url, key, 'rpc/consume_public_rate_limit', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_rate_key: addressHash,
+        p_limit: limit,
+        p_window_seconds: windowSeconds
+      })
+    });
+    if (typeof result !== 'boolean') {
+      throw new Error('Rate limit RPC boolean nəticə qaytarmadı.');
+    }
+    return result;
+  } catch (error) {
+    console.error(`${name} persistent rate limit unavailable; using local fallback:`, {
+      status: error.status || null,
+      code: error.code || null,
+      message: error.message || 'Naməlum Supabase xətası.',
+      details: error.details || null,
+      hint: error.hint || null
+    });
+    return consumeLocalRateLimit(name, addressHash, limit, windowSeconds);
+  }
 }
 
 function responseHeaders(event, extra = {}) {
@@ -78,7 +120,6 @@ function secureHandler(name, options, handler) {
     methods: ['POST'],
     maxBodyBytes: 262144,
     preserveServerErrorResponse: false,
-    exposeRateLimitError: false,
     ...options
   };
 
@@ -122,31 +163,23 @@ function secureHandler(name, options, handler) {
       };
     }
 
+    let rateLimitAllowed = true;
     try {
-      if (!(await consumeRateLimit(event, name, config.limit, config.windowSeconds))) {
-        return {
-          statusCode: 429,
-          headers: responseHeaders(event, { 'Retry-After': String(config.windowSeconds) }),
-          body: JSON.stringify({ error: 'Sorğular çox tez-tez göndərilir. Bir az sonra yenidən cəhd edin.', code: 'RATE_LIMITED' })
-        };
-      }
+      rateLimitAllowed = await consumeRateLimit(event, name, config.limit, config.windowSeconds);
     } catch (error) {
-      console.error(`${name} rate limit error:`, {
+      console.error(`${name} local rate limit fallback failed; allowing request:`, {
         status: error.status || null,
         code: error.code || null,
-        message: error.message || 'Naməlum Supabase xətası.',
+        message: error.message || 'Naməlum rate limit xətası.',
         details: error.details || null,
         hint: error.hint || null
       });
+    }
+    if (!rateLimitAllowed) {
       return {
-        statusCode: 503,
-        headers: responseHeaders(event, { 'Retry-After': '10' }),
-        body: JSON.stringify({
-          error: config.exposeRateLimitError
-            ? `Supabase sorğu limiti xətası${error.code ? ` (${error.code})` : ''}: ${String(error.message || 'Naməlum xəta.').replace(/\s+/g, ' ').slice(0, 180)}`
-            : 'Xidmət müvəqqəti əlçatan deyil.',
-          code: 'RATE_LIMIT_UNAVAILABLE'
-        })
+        statusCode: 429,
+        headers: responseHeaders(event, { 'Retry-After': String(config.windowSeconds) }),
+        body: JSON.stringify({ error: 'Sorğular çox tez-tez göndərilir. Bir az sonra yenidən cəhd edin.', code: 'RATE_LIMITED' })
       };
     }
 

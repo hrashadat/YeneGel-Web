@@ -39,7 +39,12 @@ async function sbFetch(url, key, path, options = {}) {
   }
 
   if (!res.ok) {
-    throw new Error((data && (data.message || data.error)) || `Supabase xətası (${res.status})`);
+    const error = new Error((data && (data.message || data.error)) || `Supabase xətası (${res.status})`);
+    error.status = res.status;
+    error.code = data && data.code;
+    error.details = data && data.details;
+    error.hint = data && data.hint;
+    throw error;
   }
   return data;
 }
@@ -108,7 +113,14 @@ exports.handler = async (event) => {
       body: JSON.stringify({ restaurant, card })
     };
   } catch (err) {
-    console.error('get-card error:', err);
+    console.error('get-card error:', {
+      status: err.status || null,
+      code: err.code || null,
+      message: err.message || 'Naməlum xəta.',
+      details: err.details || null,
+      hint: err.hint || null,
+      cause: err.cause?.code || err.cause?.message || null
+    });
     const causeMsg = err?.cause?.code || err?.cause?.message || '';
     return {
       statusCode: 500,
