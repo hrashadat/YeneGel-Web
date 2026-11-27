@@ -16,7 +16,6 @@ exports.handler = async (event) => {
       headers: JSON_HEADERS,
       body: JSON.stringify({ error: 'Yalnız POST sorğularına icazə verilir.' })
     };
-
   }
 
   try {
@@ -27,7 +26,6 @@ exports.handler = async (event) => {
         headers: JSON_HEADERS,
         body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' })
       };
-
     }
     const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
     const accessCodeValue = body.accessCode ?? body.adminCode ?? body.admin_code;
@@ -38,7 +36,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 400,
         headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Restoran kodu, admin kodu və kassir PİN kodu tələb olunur.' })
+        body: JSON.stringify({ error: 'Restoran kodu, admin kodu və personel PİN kodu tələb olunur.' })
       };
     }
 
@@ -62,14 +60,14 @@ exports.handler = async (event) => {
       return {
         statusCode: 401,
         headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Xüsusi giriş kodu yanlışdır.' })
+        body: JSON.stringify({ error: 'Admin giriş kodu yanlışdır.' })
       };
     }
     if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), cashierPin)) {
       return {
         statusCode: 401,
         headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Kassir PİN kodu yanlışdır.' })
+        body: JSON.stringify({ error: 'Personel PİN kodu yanlışdır.' })
       };
     }
 
