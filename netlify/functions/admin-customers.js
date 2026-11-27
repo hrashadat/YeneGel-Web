@@ -16,7 +16,7 @@ exports.handler = async event => {
     const accessCode = typeof body.accessCode === 'string' ? body.accessCode.trim() : '';
     const cashierPin = typeof body.pin === 'string' ? body.pin.trim() : '';
     if (!isValidRestaurantSlug(slug) || !accessCode || !isBoundedString(accessCode, 256) || !/^\d{4}$/.test(cashierPin)) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran, admin kodu və kassir PİN kodu tələb olunur.' }) };
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran, admin kodu və personel PİN kodu tələb olunur.' }) };
     }
 
     const { url, key } = getSupabaseConfig();
@@ -33,7 +33,7 @@ exports.handler = async event => {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Admin giriş kodu yanlışdır.' }) };
     }
     if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), cashierPin)) {
-      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Kassir PİN kodu yanlışdır.' }) };
+      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Personel PİN kodu yanlışdır.' }) };
     }
 
     const customers = await sbFetch(
