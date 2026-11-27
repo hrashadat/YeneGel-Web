@@ -889,7 +889,7 @@
         const carryover = Number(card.bonus_carryover || 0);
         const mainBonus = Math.max(0, Number(card.bonus_balance || 0) - carryover);
         document.getElementById('bonusBalanceText').textContent = t(
-          '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)',
+          '{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)',
           { amount: mainBonus.toFixed(2), carryover: carryover.toFixed(2) }
         );
 

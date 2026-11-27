@@ -480,7 +480,7 @@
           const carryover = row.dataset.bonusCarryover;
           if (amount !== undefined && carryover !== undefined) {
             row.children[3].textContent = t(
-              '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)',
+              '{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)',
               { amount, carryover }
             );
           }
@@ -663,7 +663,7 @@
         const carryover = Number(card.bonus_carryover || 0);
         const totalBonus = currentBonus + carryover;
         document.getElementById('customerBonusBalance').textContent = t(
-          '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)',
+          '{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)',
           { amount: currentBonus.toFixed(2), carryover: carryover.toFixed(2) }
         );
         const bonusPanel = document.getElementById('bonusRedeemPanel');
@@ -918,7 +918,7 @@
             customer.account_name || [customer.first_name, customer.last_name].filter(Boolean).join(' '),
             customer.phone || '—',
             String(customer.card.stamps_count || 0),
-            t('{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)', {
+            t('{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)', {
               amount: bonusCycle,
               carryover: bonusCarryover
             }),
