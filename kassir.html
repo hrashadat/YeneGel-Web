@@ -328,7 +328,6 @@
           </div>
           <section id="bonusRedeemPanel" class="field hidden">
             <button id="openBonusRedeemBtn" class="btn btn-primary" type="button">Bonus istifadə et</button>
-            <button id="bankBonusBtn" class="btn" type="button" style="width:100%;margin-top:8px" disabled aria-disabled="true">Sonraya saxla</button>
             <small id="bonusRedeemHint"></small>
           </section>
           <button id="scanNextBtn" class="btn" type="button" style="width:100%;margin-top:10px">Başqa müştərini skan et</button>
@@ -468,8 +467,9 @@
       <form id="bonusRedeemForm">
         <div class="field">
           <label for="bonusRedeemAmountInput">Nə qədər manat bonus işlətmək istəyirsiniz?</label>
-          <input id="bonusRedeemAmountInput" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" required />
+          <input id="bonusRedeemAmountInput" class="input" type="number" min="0" step="0.01" inputmode="decimal" required />
           <small id="bonusRedeemAvailable"></small>
+          <small class="stamp-lock-hint">(Müştəri istəsə 0 manat bonus istifadə edə bilər)</small>
         </div>
         <div id="bonusRedeemMsg" class="msg" role="status" aria-live="polite"></div>
         <div class="confirmation-actions">
@@ -510,7 +510,6 @@
       const removeStampTitle = document.getElementById('removeStampTitle');
       const pinActionDescription = document.getElementById('pinActionDescription');
       const addStampBtn = document.getElementById('addStampBtn');
-      const bankBonusBtn = document.getElementById('bankBonusBtn');
       const stampLockHint = document.getElementById('stampLockHint');
       const t = (text, replacements) => window.YeneGelI18n.t(text, replacements);
       pinScreen.classList.remove('hidden');
@@ -529,8 +528,6 @@
       let adminCode = '';
       let lastScannedCard = null;
       let stampSubmissionInProgress = false;
-      let bankBonusInProgress = false;
-      let pinDialogAction = 'removeStamp';
       document.getElementById('customerPageLink').href = `index.html?slug=${encodeURIComponent(slug)}`;
 
       const applyTheme = mode => {
@@ -752,7 +749,6 @@
       }
 
       function openRemoveStampDialog() {
-        pinDialogAction = 'removeStamp';
         updatePinActionText();
         removeStampForm.reset();
         showMessage(removeStampMsg, '', false);
@@ -764,30 +760,13 @@
         removeStampDialog.classList.add('hidden');
         removeStampForm.reset();
         showMessage(removeStampMsg, '', false);
-        if (pinDialogAction === 'bankBonus') bankBonusBtn.focus();
-        else document.getElementById('removeStampBtn').focus();
+        document.getElementById('removeStampBtn').focus();
       }
 
       function updatePinActionText() {
-        const isBankAction = pinDialogAction === 'bankBonus';
-        removeStampTitle.textContent = t(
-          isBankAction ? 'Bonusu sonraya saxlamaq istəyirsiniz?' : 'Möhür silmək istədiyinizdən əminsinizmi?'
-        );
+        removeStampTitle.textContent = t('Möhür silmək istədiyinizdən əminsinizmi?');
         pinActionDescription.textContent = t('Davam etmək üçün personel PİN kodunu daxil edin.');
-        confirmRemoveStampBtn.textContent = t(isBankAction ? 'Sonraya saxla' : 'Davam et');
-      }
-
-      function openBankBonusDialog() {
-        if (!isRewardReady(lastScannedCard)) {
-          showMessage(document.getElementById('operationMsg'), 'Tam xanalar dolmadan bu əməliyyat mümkün deyil.', true);
-          return;
-        }
-        pinDialogAction = 'bankBonus';
-        updatePinActionText();
-        removeStampForm.reset();
-        showMessage(removeStampMsg, '', false);
-        removeStampDialog.classList.remove('hidden');
-        window.setTimeout(() => removeStampPinInput.focus(), 0);
+        confirmRemoveStampBtn.textContent = t('Davam et');
       }
 
       function openBonusRedeemDialog() {
@@ -894,13 +873,10 @@
       function updateCustomerActionButtons(card) {
         const rewardReady = isRewardReady(card);
         const hasBonus = getBonusRedemptionAmounts(card).maxRedeemable > 0;
-        const isLocked = stampSubmissionInProgress || bankBonusInProgress;
-        const canBankBonus = !isLocked && rewardReady;
+        const isLocked = stampSubmissionInProgress;
         addStampBtn.disabled = isLocked || rewardReady;
         addStampBtn.setAttribute('aria-disabled', String(addStampBtn.disabled));
         document.getElementById('amountInput').disabled = isLocked || rewardReady;
-        bankBonusBtn.disabled = !canBankBonus;
-        bankBonusBtn.setAttribute('aria-disabled', String(!canBankBonus));
         document.getElementById('openBonusRedeemBtn').disabled =
           isLocked || !rewardReady || !hasBonus;
         document.getElementById('removeStampBtn').disabled = isLocked;
@@ -942,7 +918,7 @@
           ? t(limitMessage, { amount: maxRedeemable.toFixed(2) })
           : '';
         stampLockHint.textContent = rewardReady
-          ? t('Möhür hədəfi tamamlanıb. Bonus istifadə edin və ya sonraya saxlayın.')
+          ? t('Möhür hədəfi tamamlanıb. Bonus istifadə edin.')
           : '';
         document.getElementById('bonusRedeemHint').textContent = !rewardReady && hasBonus
           ? t('Bonus işlətmək üçün möhür hədəfi tamamlanmalıdır.')
@@ -1046,48 +1022,10 @@
         await startScanner();
       }
 
-      async function submitBankBonus(pin) {
-        if (!selectedCustomer || bankBonusInProgress) return false;
-        if (!isRewardReady(lastScannedCard)) {
-          showMessage(removeStampMsg, 'Tam xanalar dolmadan bu əməliyyat mümkün deyil.', true);
-          return false;
-        }
-        const customerId = selectedCustomer.id;
-        const operationMessage = document.getElementById('operationMsg');
-        bankBonusInProgress = true;
-        updateCustomerActionButtons(lastScannedCard);
-        showMessage(removeStampMsg, '', false);
-        try {
-          const data = await requestJson('/.netlify/functions/bank-bonus', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              slug,
-              pin,
-              customer_id: customerId
-            })
-          });
-          if (!data.card) {
-            throw new Error('Bonus sonraya saxlanıldı, lakin yenilənmiş kart alınmadı.');
-          }
-          renderScannedCustomer(data.card);
-          notifyCustomerCardUpdated(customerId);
-          showMessage(operationMessage, 'Bonus sonraya saxlanıldı.', false);
-          showToast('Bonus sonraya saxlanıldı.');
-          return true;
-        } catch (error) {
-          showMessage(removeStampMsg, error.message || 'Əməliyyat tamamlanmadı.', true);
-          return false;
-        } finally {
-          bankBonusInProgress = false;
-          if (lastScannedCard) updateCustomerActionButtons(lastScannedCard);
-        }
-      }
-
       async function submitStamp(stampDelta, pin = cashierPin, feedbackElement = null) {
         if (!selectedCustomer || stampSubmissionInProgress) return false;
         if (stampDelta === 1 && isRewardReady(lastScannedCard)) {
-          showMessage(feedbackElement || document.getElementById('operationMsg'), 'Möhür hədəfi tamamlanıb. Əvvəl bonusu istifadə edin və ya sonraya saxlayın.', true);
+          showMessage(feedbackElement || document.getElementById('operationMsg'), 'Möhür hədəfi tamamlanıb. Əvvəl bonusu istifadə edin.', true);
           return false;
         }
         const customer = selectedCustomer;
@@ -1161,14 +1099,6 @@
         }
       }
       document.getElementById('addStampBtn').addEventListener('click', () => submitStamp(1));
-      bankBonusBtn.addEventListener('click', event => {
-        if (bankBonusBtn.disabled || !isRewardReady(lastScannedCard)) {
-          event.preventDefault();
-          showMessage(document.getElementById('operationMsg'), 'Tam xanalar dolmadan bu əməliyyat mümkün deyil.', true);
-          return;
-        }
-        openBankBonusDialog();
-      });
       document.getElementById('removeStampBtn').addEventListener('click', openRemoveStampDialog);
       document.getElementById('cancelRemoveStampBtn').addEventListener('click', closeRemoveStampDialog);
       removeStampForm.addEventListener('submit', async event => {
@@ -1180,9 +1110,7 @@
         }
         confirmRemoveStampBtn.disabled = true;
         try {
-          const completed = pinDialogAction === 'bankBonus'
-            ? await submitBankBonus(pin)
-            : await submitStamp(-1, pin, removeStampMsg);
+          const completed = await submitStamp(-1, pin, removeStampMsg);
           if (completed) closeRemoveStampDialog();
         } finally {
           confirmRemoveStampBtn.disabled = false;
@@ -1199,7 +1127,7 @@
         const button = document.getElementById('confirmBonusRedeemBtn');
         const message = document.getElementById('bonusRedeemMsg');
         const operationMessage = document.getElementById('operationMsg');
-        if (!Number.isFinite(amount) || amount <= 0 || amount > maxRedeemable) {
+        if (!Number.isFinite(amount) || amount < 0 || amount > maxRedeemable) {
           showMessage(message, 'İstifadə ediləcək bonus məbləğini düzgün daxil edin.', true);
           return;
         }
@@ -1215,7 +1143,7 @@
               amount
             })
           });
-          renderScannedCustomer(data.card);
+          if (data.card) renderScannedCustomer(data.card);
           notifyCustomerCardUpdated(selectedCustomer.id);
           closeBonusRedeemDialog();
           showMessage(operationMessage, 'Bonusu uğurla işlətdik.', false);
@@ -1411,3 +1339,99 @@
   </script>
 </body>
 </html>
+```[cite: 3]
+
+---
+
+### 2. `redeem-bonus.js` (tam yeni kod)
+
+```javascript
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const { normalizeCard } = require('../lib/loyalty');
+const { constantTimeEqual, parseJsonObject } = require('../lib/request');
+const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
+const { secureHandler } = require('../lib/security');
+
+const CUSTOMER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+exports.handler = async event => {
+  try {
+    const body = parseJsonObject(event.body);
+    if (!body) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
+    }
+
+    const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
+    const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
+    const customerId = typeof body.customer_id === 'string'
+      ? body.customer_id.trim()
+      : typeof body.visitorToken === 'string' ? body.visitorToken.trim() : '';
+    const amountInput = body.amount;
+    const amount = typeof amountInput === 'number' || typeof amountInput === 'string'
+      ? Number(amountInput)
+      : NaN;
+    const redeemAmount = Number.isFinite(amount) ? Math.round((amount + Number.EPSILON) * 100) / 100 : NaN;
+
+    if (!/^[a-z0-9-]{1,80}$/.test(slug) || !/^\d{4}$/.test(pin) || !CUSTOMER_ID_PATTERN.test(customerId)) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
+    }
+    if (!Number.isFinite(redeemAmount) || redeemAmount < 0 || redeemAmount > 99999999.99 ||
+      Math.abs(amount - redeemAmount) > 0.00000001) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'İstifadə ediləcək bonus məbləğini düzgün daxil edin.' }) };
+    }
+
+    const { url, key } = getSupabaseConfig();
+    const restaurants = await sbFetch(
+      url,
+      key,
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code,stamp_goal,bonus_mode,bonus_fixed_amount,bonus_percent`
+    );
+    const restaurant = restaurants?.[0];
+    if (!restaurant) {
+      return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran tapılmadı.' }) };
+    }
+    if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), pin)) {
+      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod yanlışdır.' }) };
+    }
+
+    if (redeemAmount === 0) {
+      const cards = await sbFetch(
+        url,
+        key,
+        `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customerId)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`
+      );
+      const card = cards?.[0];
+      if (!card) {
+        return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Müştəri kartı tapılmadı.' }) };
+      }
+      return {
+        statusCode: 200,
+        headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
+        body: JSON.stringify({ card: normalizeCard(restaurant, card) })
+      };
+    }
+
+    const result = await sbFetch(url, key, 'rpc/redeem_customer_bonus', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_restaurant_id: restaurant.id,
+        p_customer_id: customerId,
+        p_amount: redeemAmount
+      })
+    });
+    return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(result) };
+  } catch (error) {
+    console.error('redeem-bonus error:', error);
+    const clientError = /Aktiv bonus yoxdur|bonus balansından çox|Müştəri kartı tapılmadı|Restoran tapılmadı/i.test(error.message || '');
+    return {
+      statusCode: clientError ? 422 : 500,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ error: clientError ? error.message : 'Bonus əməliyyatı tamamlanmadı.' })
+    };
+  }
+};
+
+exports.handler = secureHandler('redeem-bonus', { limit: 20 }, exports.handler);
+```[cite: 16]
+
+İkisini də öz yerində (`kassir.html` və `netlify/functions/redeem-bonus.js`) yeniləyib deploy edə bilərsən[cite: 3, 4, 16]. Deploy-dan sonra test et, nəsə xəta çıxsa de.
