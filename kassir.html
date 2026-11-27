@@ -17,6 +17,7 @@
       --accent-text: #fff;
       --danger: #a33d32;
       --success: #3d6b4e;
+      --bonus-gold: #8a6500;
       --shadow: 0 10px 30px rgba(24, 24, 22, .05);
     }
     body:not(.light-mode) {
@@ -29,6 +30,7 @@
       --muted: #c0b6a8;
       --accent: #f7f5f0;
       --accent-text: #181816;
+      --bonus-gold: #eab308;
       --shadow: 0 12px 32px rgba(0, 0, 0, .2);
     }
     * { box-sizing: border-box; }
@@ -173,6 +175,7 @@
     .customer h3 { margin: 0 0 5px; font-size: 17px; }
     .customer p { margin: 4px 0; color: var(--muted); }
     .customer .customer-total-spent { color: var(--text); font-weight: 750; }
+    .customer .customer-bonus-balance { color: var(--bonus-gold); font-weight: 700; }
     .stamp-count { margin: 14px 0; font-size: 26px; font-weight: 850; }
     .actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
     .danger-zone { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
@@ -257,7 +260,7 @@
           <p id="customerId"></p>
           <div id="stampCount" class="stamp-count"></div>
           <p id="customerTotalSpent" class="customer-total-spent"></p>
-          <div id="customerBonusBalance" class="stamp-count"></div>
+          <div id="customerBonusBalance" class="stamp-count customer-bonus-balance"></div>
           <div class="field">
             <label for="amountInput">Yeməyin məbləği (AZN)</label>
             <input id="amountInput" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="məs: 25.00" />
@@ -786,7 +789,8 @@
 
       async function submitStamp(stampDelta, pin = cashierPin, feedbackElement = null) {
         if (!selectedCustomer || stampSubmissionInProgress) return false;
-        const customerId = selectedCustomer.id;
+        const customer = selectedCustomer;
+        const customerId = customer.id;
         const amount = stampDelta === 1 ? Number(document.getElementById('amountInput').value) : 0;
         const message = feedbackElement || document.getElementById('operationMsg');
         if (stampDelta === 1 && (!Number.isFinite(amount) || amount <= 0)) {
@@ -794,11 +798,16 @@
           return false;
         }
         stampSubmissionInProgress = true;
-        const buttons = [document.getElementById('addStampBtn'), document.getElementById('removeStampBtn')];
+        const buttons = [
+          document.getElementById('addStampBtn'),
+          document.getElementById('removeStampBtn'),
+          document.getElementById('scanNextBtn')
+        ];
         buttons.forEach(button => { button.disabled = true; });
         showMessage(message, '', false);
+        let writeCompleted = false;
         try {
-          await requestJson('/.netlify/functions/cashier-stamp', {
+          const result = await requestJson('/.netlify/functions/cashier-stamp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -809,19 +818,40 @@
               stamp_delta: stampDelta
             })
           });
-          const customerData = await requestJson('/.netlify/functions/cashier-customer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              slug,
-              pin,
-              customer_id: customerId
-            })
-          });
-          selectedCustomer = customerData.customer;
-          renderScannedCustomer(customerData.card);
+          writeCompleted = true;
+          let updatedCustomer = customer;
+          let updatedCard = result.card;
+          let refreshFailed = false;
+          try {
+            const customerData = await requestJson('/.netlify/functions/cashier-customer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                slug,
+                pin,
+                customer_id: customerId
+              })
+            });
+            if (!customerData.customer || !customerData.card) {
+              throw new Error('Kartın yenilənmiş cavabı natamamdır.');
+            }
+            updatedCustomer = customerData.customer;
+            updatedCard = customerData.card;
+          } catch (refreshError) {
+            console.warn('Kartı təzədən oxumaq alınmadı; cashier-stamp cavabındakı bazadan oxunmuş məlumat istifadə edilir:', refreshError);
+            refreshFailed = true;
+          }
+          if (!updatedCard) {
+            throw new Error('Möhür əməliyyatı tamamlandı, lakin cavabda yenilənmiş kart yoxdur.');
+          }
+          selectedCustomer = updatedCustomer;
+          renderScannedCustomer(updatedCard);
           notifyCustomerCardUpdated(customerId);
-          showMessage(message, '', false);
+          showMessage(
+            message,
+            refreshFailed ? 'Möhür bazada tamamlandı; yenilənmiş kart məlumatı server cavabından göstərilir.' : '',
+            false
+          );
           if (stampDelta > 0) {
             await showStampAddedLoading();
             showToast('Möhür əlavə edildi');
@@ -831,6 +861,22 @@
           }
           return true;
         } catch (error) {
+          if (writeCompleted) {
+            console.error('Möhür bazada tamamlandı, amma kassir ekranını yeniləmək alınmadı:', error);
+            notifyCustomerCardUpdated(customerId);
+            try {
+              await prepareForNextCustomer();
+            } catch (recoveryError) {
+              console.error('Yenilənməyən kartdan sonrakı skaner bərpası alınmadı:', recoveryError);
+            }
+            showMessage(
+              document.getElementById('scannerMsg'),
+              'Möhür bazada tamamlandı, amma kartı yeniləmək alınmadı. Müştərini yenidən skan edin.',
+              true
+            );
+            showToast(stampDelta > 0 ? 'Möhür əlavə edildi' : 'Möhür silindi');
+            return true;
+          }
           showMessage(message, error.message || 'Əməliyyat tamamlanmadı.', true);
           return false;
         } finally {
