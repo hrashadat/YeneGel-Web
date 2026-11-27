@@ -56,10 +56,42 @@ exports.handler = async event => {
       if (!card) {
         return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Müştəri kartı tapılmadı.' }) };
       }
+
+      const oldCarryover = Number(card.bonus_carryover || 0);
+      const totalBalance = Number(card.bonus_balance || 0);
+      const currentCycleBonus = Math.max(0, Number((totalBalance - oldCarryover).toFixed(2)));
+      const newCarryover = Number((oldCarryover + currentCycleBonus).toFixed(2));
+
+      const updatedCards = await sbFetch(
+        url,
+        key,
+        `loyalty_cards?id=eq.${encodeURIComponent(card.id)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`,
+        {
+          method: 'PATCH',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify({
+            stamps_count: 0,
+            total_spent: 0,
+            reward_unlocked: false,
+            bonus_carryover: newCarryover,
+            bonus_balance: newCarryover
+          })
+        }
+      );
+
+      const updatedCard = updatedCards?.[0] || {
+        ...card,
+        stamps_count: 0,
+        total_spent: 0,
+        reward_unlocked: false,
+        bonus_carryover: newCarryover,
+        bonus_balance: newCarryover
+      };
+
       return {
         statusCode: 200,
         headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
-        body: JSON.stringify({ card: normalizeCard(restaurant, card) })
+        body: JSON.stringify({ card: normalizeCard(restaurant, updatedCard) })
       };
     }
 
