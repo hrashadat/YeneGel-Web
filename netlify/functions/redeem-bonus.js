@@ -1,4 +1,5 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const { normalizeCard } = require('../lib/loyalty');
 const { constantTimeEqual, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
 const { secureHandler } = require('../lib/security');
@@ -26,7 +27,7 @@ exports.handler = async event => {
     if (!/^[a-z0-9-]{1,80}$/.test(slug) || !/^\d{4}$/.test(pin) || !CUSTOMER_ID_PATTERN.test(customerId)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Sorğu məlumatı etibarsızdır.' }) };
     }
-    if (!Number.isFinite(redeemAmount) || redeemAmount <= 0 || redeemAmount > 99999999.99 ||
+    if (!Number.isFinite(redeemAmount) || redeemAmount < 0 || redeemAmount > 99999999.99 ||
       Math.abs(amount - redeemAmount) > 0.00000001) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'İstifadə ediləcək bonus məbləğini düzgün daxil edin.' }) };
     }
@@ -35,7 +36,7 @@ exports.handler = async event => {
     const restaurants = await sbFetch(
       url,
       key,
-      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code`
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code,stamp_goal,bonus_mode,bonus_fixed_amount,bonus_percent`
     );
     const restaurant = restaurants?.[0];
     if (!restaurant) {
@@ -43,6 +44,23 @@ exports.handler = async event => {
     }
     if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), pin)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod yanlışdır.' }) };
+    }
+
+    if (redeemAmount === 0) {
+      const cards = await sbFetch(
+        url,
+        key,
+        `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customerId)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`
+      );
+      const card = cards?.[0];
+      if (!card) {
+        return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Müştəri kartı tapılmadı.' }) };
+      }
+      return {
+        statusCode: 200,
+        headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
+        body: JSON.stringify({ card: normalizeCard(restaurant, card) })
+      };
     }
 
     const result = await sbFetch(url, key, 'rpc/redeem_customer_bonus', {
