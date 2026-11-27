@@ -45,14 +45,21 @@ function getStoredBonusCarryover(card) {
 }
 
 function getBonusCycleBalance(restaurant, card) {
-  const unlocked = getStampCount(card) >= getStampGoal(restaurant);
-  if (!unlocked) return 0;
-  const wasUnlocked = card?.reward_unlocked === true;
+  const storedBonus = getStoredBonusBalance(card);
   const mode = String(restaurant?.bonus_mode || 'fixed').trim().toLowerCase();
-  const pendingFixedBonus = !wasUnlocked && mode !== 'percent'
+
+  if (mode === 'percent') {
+    const percentBonus = calculateBonusAmount(restaurant, getTotalSpent(card));
+    return roundMoney(Math.max(storedBonus, percentBonus));
+  }
+
+  const unlocked = getStampCount(card) >= getStampGoal(restaurant);
+  const wasUnlocked = card?.reward_unlocked === true;
+  const pendingFixedBonus = unlocked && !wasUnlocked
     ? calculateBonusAmount(restaurant, 0)
     : 0;
-  return roundMoney(Math.max(0, getStoredBonusBalance(card) + pendingFixedBonus));
+
+  return roundMoney(Math.max(0, storedBonus + pendingFixedBonus));
 }
 
 function getBonusBalance(restaurant, card) {
