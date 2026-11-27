@@ -17,7 +17,7 @@
       --accent-text: #fff;
       --danger: #a33d32;
       --success: #3d6b4e;
-      --bonus-gold: #8a6500;
+      --bonus-gold: #d4af37;
       --shadow: 0 10px 30px rgba(24, 24, 22, .05);
     }
     body:not(.light-mode) {
@@ -30,7 +30,7 @@
       --muted: #c0b6a8;
       --accent: #f7f5f0;
       --accent-text: #181816;
-      --bonus-gold: #eab308;
+      --bonus-gold: #d4af37;
       --shadow: 0 12px 32px rgba(0, 0, 0, .2);
     }
     * { box-sizing: border-box; }
@@ -265,13 +265,13 @@
             <label for="amountInput">Yeməyin məbləği (AZN)</label>
             <input id="amountInput" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="məs: 25.00" />
           </div>
+          <div class="actions">
+            <button id="addStampBtn" class="btn btn-primary" type="button">+ Möhür əlavə et</button>
+          </div>
           <section id="bonusRedeemPanel" class="field hidden">
             <button id="openBonusRedeemBtn" class="btn btn-primary" type="button">Bonus istifadə et</button>
             <small id="bonusRedeemHint"></small>
           </section>
-          <div class="actions">
-            <button id="addStampBtn" class="btn btn-primary" type="button">+ Möhür əlavə et</button>
-          </div>
           <button id="scanNextBtn" class="btn" type="button" style="width:100%;margin-top:10px">Başqa müştərini skan et</button>
           <div id="operationMsg" class="msg" role="status"></div>
           <details class="danger-zone">
@@ -360,7 +360,7 @@
           <div id="customerListMsg" class="msg"></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Ad soyad</th><th>Telefon</th><th>Möhür</th><th>Bonus</th><th>Qeydiyyat</th></tr></thead>
+              <thead><tr><th>Hesab adı</th><th>Telefon</th><th>Möhür</th><th>Bonus</th><th>Qeydiyyat</th></tr></thead>
               <tbody id="customerRows"></tbody>
             </table>
           </div>
@@ -986,7 +986,7 @@
           row.dataset.bonusCycle = bonusCycle;
           row.dataset.bonusCarryover = bonusCarryover;
           const values = [
-            customer.account_name || [customer.first_name, customer.last_name].filter(Boolean).join(' '),
+            customer.account_name || '—',
             customer.phone || '—',
             String(customer.card.stamps_count || 0),
             t('{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)', {
