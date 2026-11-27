@@ -32,6 +32,7 @@ DECLARE
   v_delta smallint;
   v_bonus_delta numeric(10, 2) := 0;
   v_reversed_bonus numeric(10, 2) := 0;
+  v_reversed_amount numeric(10, 2) := 0;
   v_remaining_reversal numeric(10, 2) := 0;
   v_main_deduction numeric(10, 2) := 0;
   v_carryover_deduction numeric(10, 2) := 0;
@@ -101,7 +102,6 @@ BEGIN
     FROM public.card_transactions tx
     WHERE tx.card_id = v_card.id
       AND tx.tx_type = 'stamp_added'
-      AND tx.stamp_delta = 1
       AND NOT EXISTS (
         SELECT 1
         FROM public.card_transactions reversal
@@ -111,15 +111,19 @@ BEGIN
     LIMIT 1
     FOR UPDATE;
 
-    IF FOUND THEN
-      v_remaining_reversal := GREATEST(COALESCE(v_last_stamp.bonus_delta, 0), 0);
-      v_main_deduction := LEAST(v_next_bonus, v_remaining_reversal);
-      v_remaining_reversal := v_remaining_reversal - v_main_deduction;
-      v_carryover_deduction := LEAST(v_next_carryover, v_remaining_reversal);
-      v_reversed_bonus := v_main_deduction + v_carryover_deduction;
-      v_next_bonus := v_next_bonus - v_main_deduction;
-      v_next_carryover := v_next_carryover - v_carryover_deduction;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Geri alınacaq əməliyyat tapılmadı.';
     END IF;
+
+    v_reversed_amount := GREATEST(COALESCE(v_last_stamp.bill_amount, v_last_stamp.amount, 0), 0);
+    v_next_spent := GREATEST(v_next_spent - v_reversed_amount, 0);
+    v_remaining_reversal := GREATEST(COALESCE(v_last_stamp.bonus_delta, 0), 0);
+    v_main_deduction := LEAST(v_next_bonus, v_remaining_reversal);
+    v_remaining_reversal := v_remaining_reversal - v_main_deduction;
+    v_carryover_deduction := LEAST(v_next_carryover, v_remaining_reversal);
+    v_reversed_bonus := v_main_deduction + v_carryover_deduction;
+    v_next_bonus := v_next_bonus - v_main_deduction;
+    v_next_carryover := v_next_carryover - v_carryover_deduction;
   END IF;
 
   UPDATE public.loyalty_cards
@@ -148,8 +152,8 @@ BEGIN
       p_customer_id::text,
       'stamp_removed',
       'stamp_removed',
-      0,
-      0,
+      -v_reversed_amount,
+      -v_reversed_amount,
       -v_reversed_bonus,
       -1,
       v_last_stamp.id

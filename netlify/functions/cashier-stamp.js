@@ -88,7 +88,7 @@ exports.handler = async event => {
       const databaseMessage = String(error.message || 'Naməlum xəta.')
         .replace(/\s+/g, ' ')
         .slice(0, 180);
-      const isBusinessError = /Müştəri tapılmadı|Müştəri kartı tapılmadı|Möhür silmək üçün kartda möhür yoxdur|Restoran tapılmadı|Düzgün hesab məbləği daxil edin|Möhür əməliyyatı etibarsızdır/i
+      const isBusinessError = /Müştəri tapılmadı|Müştəri kartı tapılmadı|Möhür silmək üçün kartda möhür yoxdur|Geri alınacaq əməliyyat tapılmadı|Restoran tapılmadı|Düzgün hesab məbləği daxil edin|Möhür əməliyyatı etibarsızdır/i
         .test(databaseMessage);
       const isRpcSignatureError = ['PGRST202', 'PGRST203', '42883'].includes(error.code);
       const message = isRpcSignatureError
@@ -112,7 +112,7 @@ exports.handler = async event => {
     };
 
   } catch (err) {
-    const isBusinessError = /Müştəri tapılmadı|Müştəri kartı tapılmadı|Möhür silmək üçün|Restoran tapılmadı/i.test(err.message || '');
+    const isBusinessError = /Müştəri tapılmadı|Müştəri kartı tapılmadı|Möhür silmək üçün|Geri alınacaq əməliyyat tapılmadı|Restoran tapılmadı/i.test(err.message || '');
     const errorMessage = String(err.message || 'Naməlum xəta.')
       .replace(/\s+/g, ' ')
       .slice(0, 180);

@@ -47,7 +47,7 @@ exports.handler = async event => {
     return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(result) };
   } catch (error) {
     console.error('undo-stamp error:', error);
-    const clientError = /Müştəri tapılmadı|Möhür silmək üçün|Müştəri kartı tapılmadı|Restoran tapılmadı/i.test(error.message || '');
+    const clientError = /Müştəri tapılmadı|Möhür silmək üçün|Müştəri kartı tapılmadı|Geri alınacaq əməliyyat tapılmadı|Restoran tapılmadı/i.test(error.message || '');
     return {
       statusCode: clientError ? 422 : 500,
       headers: JSON_HEADERS,

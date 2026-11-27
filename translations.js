@@ -27,6 +27,8 @@
     'Yüklənir': ['Загрузка', 'Loading'],
     '0 / 5 möhür': ['0 / 5 печатей', '0 / 5 stamps'],
     'Toplam hesab': ['Общая сумма покупок', 'Total spent'],
+    'Toplam hesab: {{amount}} AZN': ['Общая сумма покупок: {{amount}} AZN', 'Total spent: {{amount}} AZN'],
+    'Geri alınacaq əməliyyat tapılmadı.': ['Не найдена операция для отмены.', 'No operation was found to undo.'],
     'Cari bonus': ['Текущий бонус', 'Current bonus'],
     'Supabase-də apply_customer_stamp_transaction funksiyası və ya parametr imzası tapılmadı. SQL migration-ları yoxlayın.': [
       'В Supabase не найдена функция apply_customer_stamp_transaction или её сигнатура параметров не совпадает. Проверьте SQL-миграции.',

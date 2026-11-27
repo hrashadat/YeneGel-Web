@@ -2,7 +2,7 @@
 <html lang="az">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Yenə gəl — Kassir və Admin</title>
   <style>
     :root {
@@ -40,7 +40,8 @@
       color: var(--text);
       font: 15px system-ui, -apple-system, "Segoe UI", sans-serif;
     }
-    button, input, textarea { font: inherit; }
+    button { font: inherit; }
+    input, textarea, select { font: inherit; font-size: 16px; }
     .app { width: min(100%, 760px); margin: 0 auto; display: grid; gap: 16px; }
     .slug-error { width: min(100%, 760px); margin: auto; }
     .topbar, .top-actions, .tabs, .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -76,7 +77,7 @@
     label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
     .input { width: 100%; padding: 12px 13px; border: 1px solid var(--border); border-radius: 11px; outline: none; background: var(--soft); color: var(--text); }
     .input:focus { border-color: var(--muted); }
-    textarea.input { min-height: 130px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    textarea.input { min-height: 130px; resize: vertical; font-family: ui-monospace, Consolas, monospace; }
     .btn { padding: 11px 15px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); color: var(--text); font-weight: 750; cursor: pointer; }
     .btn-primary { width: 100%; border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
     .btn:disabled { opacity: .6; cursor: not-allowed; }
@@ -171,6 +172,7 @@
     .customer { margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--soft); }
     .customer h3 { margin: 0 0 5px; font-size: 17px; }
     .customer p { margin: 4px 0; color: var(--muted); }
+    .customer .customer-total-spent { color: var(--text); font-weight: 750; }
     .stamp-count { margin: 14px 0; font-size: 26px; font-weight: 850; }
     .actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
     .danger-zone { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
@@ -254,6 +256,7 @@
           <p id="customerPhone"></p>
           <p id="customerId"></p>
           <div id="stampCount" class="stamp-count"></div>
+          <p id="customerTotalSpent" class="customer-total-spent"></p>
           <div id="customerBonusBalance" class="stamp-count"></div>
           <div class="field">
             <label for="amountInput">Yeməyin məbləği (AZN)</label>
@@ -658,6 +661,9 @@
         document.getElementById('stampCount').textContent = t('{{current}} / {{goal}} möhür', {
           current: stamps,
           goal
+        });
+        document.getElementById('customerTotalSpent').textContent = t('Toplam hesab: {{amount}} AZN', {
+          amount: Number(card.total_spent || 0).toFixed(2)
         });
         const currentBonus = Number(card.bonus_cycle_balance ?? card.bonus_balance ?? 0);
         const carryover = Number(card.bonus_carryover || 0);
