@@ -786,6 +786,7 @@
 
       async function submitStamp(stampDelta, pin = cashierPin, feedbackElement = null) {
         if (!selectedCustomer || stampSubmissionInProgress) return false;
+        const customerId = selectedCustomer.id;
         const amount = stampDelta === 1 ? Number(document.getElementById('amountInput').value) : 0;
         const message = feedbackElement || document.getElementById('operationMsg');
         if (stampDelta === 1 && (!Number.isFinite(amount) || amount <= 0)) {
@@ -797,19 +798,29 @@
         buttons.forEach(button => { button.disabled = true; });
         showMessage(message, '', false);
         try {
-          const data = await requestJson('/.netlify/functions/cashier-stamp', {
+          await requestJson('/.netlify/functions/cashier-stamp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               slug,
               pin,
-              customer_id: selectedCustomer.id,
+              customer_id: customerId,
               amount,
               stamp_delta: stampDelta
             })
           });
-          renderScannedCustomer(data.card);
-          notifyCustomerCardUpdated(selectedCustomer.id);
+          const customerData = await requestJson('/.netlify/functions/cashier-customer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              slug,
+              pin,
+              customer_id: customerId
+            })
+          });
+          selectedCustomer = customerData.customer;
+          renderScannedCustomer(customerData.card);
+          notifyCustomerCardUpdated(customerId);
           showMessage(message, '', false);
           if (stampDelta > 0) {
             await showStampAddedLoading();
