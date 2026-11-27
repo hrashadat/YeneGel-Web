@@ -57,40 +57,36 @@ exports.handler = async event => {
         return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Müştəri kartı tapılmadı.' }) };
       }
 
-      const oldCarryover = Number(card.bonus_carryover || 0);
-      const totalBalance = Number(card.bonus_balance || 0);
-      const currentCycleBonus = Math.max(0, Number((totalBalance - oldCarryover).toFixed(2)));
-      const newCarryover = Number((oldCarryover + currentCycleBonus).toFixed(2));
+      const normalizedBefore = normalizeCard(restaurant, card);
+      const oldCarryover = Number(card.bonus_carryover ?? normalizedBefore?.bonus_carryover ?? 0);
+      const currentCycleBonus = Number(
+        normalizedBefore?.bonus_cycle_balance ??
+        Math.max(0, Number(card.bonus_balance || 0) - oldCarryover)
+      );
+      const safeCurrentBonus = Number.isFinite(currentCycleBonus) ? Math.max(0, currentCycleBonus) : 0;
+      const safeOldCarryover = Number.isFinite(oldCarryover) ? Math.max(0, oldCarryover) : 0;
+      const newCarryover = Number((safeOldCarryover + safeCurrentBonus).toFixed(2));
 
-      const updatedCards = await sbFetch(
+      await sbFetch(
         url,
         key,
-        `loyalty_cards?id=eq.${encodeURIComponent(card.id)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`,
+        `loyalty_cards?id=eq.${encodeURIComponent(card.id)}`,
         {
           method: 'PATCH',
-          headers: { Prefer: 'return=representation' },
+          headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({
             stamps_count: 0,
             total_spent: 0,
             reward_unlocked: false,
             bonus_carryover: newCarryover,
-            bonus_balance: 0
+            bonus_balance: newCarryover
           })
         }
       );
 
-      const rawUpdated = updatedCards?.[0] || {
-        ...card,
-        stamps_count: 0,
-        total_spent: 0,
-        reward_unlocked: false,
-        bonus_carryover: newCarryover,
-        bonus_balance: 0
-      };
-
-      const normalized = normalizeCard(restaurant, rawUpdated);
       const finalCard = {
-        ...normalized,
+        ...normalizedBefore,
+        id: card.id,
         stamps_count: 0,
         total_spent: 0,
         reward_unlocked: false,
