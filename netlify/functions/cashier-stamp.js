@@ -57,15 +57,54 @@ exports.handler = async event => {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod yanlışdır.' }) };
     }
 
-    const result = await sbFetch(url, key, 'rpc/apply_customer_stamp_transaction', {
-      method: 'POST',
-      body: JSON.stringify({
-        p_restaurant_id: restaurant.id,
-        p_customer_id: customerId,
-        p_amount: billAmount,
-        p_stamp_delta: stampDelta
-      })
-    });
+    const rpcPayload = {
+      p_restaurant_id: restaurant.id,
+      p_customer_id: customerId,
+      p_amount: billAmount,
+      p_stamp_delta: stampDelta
+    };
+    let result;
+    try {
+      result = await sbFetch(url, key, 'rpc/apply_customer_stamp_transaction', {
+        method: 'POST',
+        body: JSON.stringify(rpcPayload)
+      });
+    } catch (error) {
+      console.error('cashier-stamp apply_customer_stamp_transaction RPC failed:', {
+        status: error.status || null,
+        code: error.code || null,
+        message: error.message || 'Naməlum Supabase xətası.',
+        details: error.details || null,
+        hint: error.hint || null,
+        payloadFields: Object.keys(rpcPayload),
+        payloadTypes: {
+          p_restaurant_id: 'uuid',
+          p_customer_id: 'uuid',
+          p_amount: 'numeric',
+          p_stamp_delta: 'smallint'
+        }
+      });
+
+      const databaseMessage = String(error.message || 'Naməlum xəta.')
+        .replace(/\s+/g, ' ')
+        .slice(0, 180);
+      const isBusinessError = /Müştəri tapılmadı|Müştəri kartı tapılmadı|Möhür silmək üçün kartda möhür yoxdur|Restoran tapılmadı|Düzgün hesab məbləği daxil edin|Möhür əməliyyatı etibarsızdır/i
+        .test(databaseMessage);
+      const isRpcSignatureError = ['PGRST202', 'PGRST203', '42883'].includes(error.code);
+      const message = isRpcSignatureError
+        ? 'Supabase-də apply_customer_stamp_transaction funksiyası və ya parametr imzası tapılmadı. SQL migration-ları yoxlayın.'
+        : isBusinessError
+          ? databaseMessage
+          : `Supabase möhür əməliyyatı xətası${error.code ? ` (${error.code})` : ''}: ${databaseMessage}`;
+      return {
+        statusCode: isBusinessError ? 422 : 500,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          error: message,
+          code: isRpcSignatureError ? 'STAMP_RPC_SIGNATURE_MISMATCH' : error.code || 'STAMP_TRANSACTION_FAILED'
+        })
+      };
+    }
     return {
       statusCode: 200,
       headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
@@ -73,10 +112,31 @@ exports.handler = async event => {
     };
 
   } catch (err) {
-    const statusCode = /Müştəri tapılmadı|Möhür silmək üçün|Kart tapılmadı/.test(err.message) ? 422 : 500;
-    console.error('cashier-stamp error:', err);
-    return { statusCode, headers: JSON_HEADERS, body: JSON.stringify({ error: err.message }) };
+    const isBusinessError = /Müştəri tapılmadı|Müştəri kartı tapılmadı|Möhür silmək üçün|Restoran tapılmadı/i.test(err.message || '');
+    const errorMessage = String(err.message || 'Naməlum xəta.')
+      .replace(/\s+/g, ' ')
+      .slice(0, 180);
+    console.error('cashier-stamp error:', {
+      message: errorMessage,
+      code: err.code || null,
+      status: err.status || null,
+      details: err.details || null,
+      hint: err.hint || null
+    });
+    return {
+      statusCode: isBusinessError ? 422 : 500,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        error: isBusinessError
+          ? errorMessage
+          : `Supabase kassir xidməti xətası${err.code ? ` (${err.code})` : ''}: ${errorMessage}`
+      })
+    };
   }
 };
 
-exports.handler = secureHandler('cashier-stamp', { limit: 30 }, exports.handler);
+exports.handler = secureHandler('cashier-stamp', {
+  limit: 30,
+  preserveServerErrorResponse: true,
+  exposeRateLimitError: true
+}, exports.handler);

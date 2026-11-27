@@ -28,6 +28,10 @@
     '0 / 5 möhür': ['0 / 5 печатей', '0 / 5 stamps'],
     'Toplam hesab': ['Общая сумма покупок', 'Total spent'],
     'Cari bonus': ['Текущий бонус', 'Current bonus'],
+    'Supabase-də apply_customer_stamp_transaction funksiyası və ya parametr imzası tapılmadı. SQL migration-ları yoxlayın.': [
+      'В Supabase не найдена функция apply_customer_stamp_transaction или её сигнатура параметров не совпадает. Проверьте SQL-миграции.',
+      'The Supabase apply_customer_stamp_transaction function or its parameter signature was not found. Check the SQL migrations.'
+    ],
     'Şəxsi QR kodunuz': ['Ваш личный QR-код', 'Your personal QR code'],
     'Məkan haqqında': ['О заведении', 'About the restaurant'],
     'Light': ['Светлая', 'Light'],
@@ -147,7 +151,10 @@
     'möhür': ['печати', 'stamps'],
     'Bizdə bu qədər bonus var': ['Ваш бонусный баланс', 'Your bonus balance'],
     'Cari bonus': ['Текущий бонус', 'Current bonus'],
-    '{{amount}} AZN (+ {{carryover}} AZN)': ['{{amount}} AZN (+ {{carryover}} AZN)', '{{amount}} AZN (+ {{carryover}} AZN)'],
+    '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)': [
+      '{{amount}} AZN (+ {{carryover}} AZN осталось с прошлого раза)',
+      '{{amount}} AZN (+ {{carryover}} AZN carried over from last time)'
+    ],
     '{{current}} / {{goal}} möhür': ['{{current}} / {{goal}} печатей', '{{current}} / {{goal}} stamps'],
     'Müştəri ID: {{id}}': ['ID клиента: {{id}}', 'Customer ID: {{id}}'],
     'Telefon: {{phone}}': ['Телефон: {{phone}}', 'Phone: {{phone}}'],

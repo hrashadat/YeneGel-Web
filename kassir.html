@@ -479,7 +479,10 @@
           const amount = row.dataset.bonusCycle;
           const carryover = row.dataset.bonusCarryover;
           if (amount !== undefined && carryover !== undefined) {
-            row.children[3].textContent = t('{{amount}} AZN (+ {{carryover}} AZN)', { amount, carryover });
+            row.children[3].textContent = t(
+              '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)',
+              { amount, carryover }
+            );
           }
         });
       });
@@ -499,7 +502,10 @@
           const response = await fetch(url, options);
           const data = await response.json().catch(() => ({}));
           if (data.code === 'RATE_LIMIT_UNAVAILABLE') {
-            throw new Error(t('Təhlükəsizlik xidməti hazır deyil. Supabase mühit dəyişənlərini yoxlayın və tələb olunan SQL migration-ı tətbiq edin.'));
+            const message = data.error === 'Xidmət müvəqqəti əlçatan deyil.'
+              ? t('Təhlükəsizlik xidməti hazır deyil. Supabase mühit dəyişənlərini yoxlayın və tələb olunan SQL migration-ı tətbiq edin.')
+              : t(data.error || 'Xidmət müvəqqəti əlçatan deyil.');
+            throw new Error(message);
           }
           if (!response.ok) throw new Error(t(data.error || 'Sorğu uğursuz oldu.'));
           return data;
@@ -657,7 +663,7 @@
         const carryover = Number(card.bonus_carryover || 0);
         const totalBonus = currentBonus + carryover;
         document.getElementById('customerBonusBalance').textContent = t(
-          '{{amount}} AZN (+ {{carryover}} AZN)',
+          '{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)',
           { amount: currentBonus.toFixed(2), carryover: carryover.toFixed(2) }
         );
         const bonusPanel = document.getElementById('bonusRedeemPanel');
@@ -912,7 +918,7 @@
             customer.account_name || [customer.first_name, customer.last_name].filter(Boolean).join(' '),
             customer.phone || '—',
             String(customer.card.stamps_count || 0),
-            t('{{amount}} AZN (+ {{carryover}} AZN)', {
+            t('{{amount}} AZN (+ {{carryover}} AZN keçən dəfədən qalan bonus)', {
               amount: bonusCycle,
               carryover: bonusCarryover
             }),

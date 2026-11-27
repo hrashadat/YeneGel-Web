@@ -69,6 +69,7 @@ async function sbFetch(url, key, path, options = {}) {
   }
   if (!res.ok) {
     const error = new Error((data && (data.message || data.error)) || `Supabase xətası (${res.status})`);
+    error.status = res.status;
     error.code = data && data.code;
     error.details = data && data.details;
     error.hint = data && data.hint;

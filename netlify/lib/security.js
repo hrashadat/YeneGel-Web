@@ -77,6 +77,8 @@ function secureHandler(name, options, handler) {
     windowSeconds: 60,
     methods: ['POST'],
     maxBodyBytes: 262144,
+    preserveServerErrorResponse: false,
+    exposeRateLimitError: false,
     ...options
   };
 
@@ -129,11 +131,22 @@ function secureHandler(name, options, handler) {
         };
       }
     } catch (error) {
-      console.error(`${name} rate limit error:`, error);
+      console.error(`${name} rate limit error:`, {
+        status: error.status || null,
+        code: error.code || null,
+        message: error.message || 'Naməlum Supabase xətası.',
+        details: error.details || null,
+        hint: error.hint || null
+      });
       return {
         statusCode: 503,
         headers: responseHeaders(event, { 'Retry-After': '10' }),
-        body: JSON.stringify({ error: 'Xidmət müvəqqəti əlçatan deyil.', code: 'RATE_LIMIT_UNAVAILABLE' })
+        body: JSON.stringify({
+          error: config.exposeRateLimitError
+            ? `Supabase sorğu limiti xətası${error.code ? ` (${error.code})` : ''}: ${String(error.message || 'Naməlum xəta.').replace(/\s+/g, ' ').slice(0, 180)}`
+            : 'Xidmət müvəqqəti əlçatan deyil.',
+          code: 'RATE_LIMIT_UNAVAILABLE'
+        })
       };
     }
 
@@ -147,7 +160,7 @@ function secureHandler(name, options, handler) {
         body: JSON.stringify({ error: 'Xidmət müvəqqəti əlçatan deyil.', code: 'SERVER_ERROR' })
       };
     }
-    if (response.statusCode >= 500) {
+    if (response.statusCode >= 500 && !config.preserveServerErrorResponse) {
       response = {
         ...response,
         body: JSON.stringify({ error: 'Xidmət müvəqqəti əlçatan deyil.', code: 'SERVER_ERROR' })
