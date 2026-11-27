@@ -107,12 +107,28 @@ exports.handler = async event => {
       };
     }
 
+    const cardId = result?.card?.id;
+    if (!isValidUuid(cardId)) {
+      console.error('cashier-stamp RPC completed without returning a valid card id:', {
+        restaurantId: restaurant.id,
+        customerId
+      });
+      return {
+        statusCode: 502,
+        headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
+        body: JSON.stringify({
+          error: 'Möhür əməliyyatı bazada tamamlandı, amma yenilənmiş kartın ID-si alınmadı. Müştərini yenidən skan edin.',
+          code: 'CARD_REFRESH_FAILED'
+        })
+      };
+    }
+
     let cards;
     try {
       cards = await sbFetch(
         url,
         key,
-        `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customerId)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`
+        `loyalty_cards?id=eq.${encodeURIComponent(cardId)}&restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customerId)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`
       );
     } catch (error) {
       console.error('cashier-stamp card refresh failed after RPC succeeded:', {

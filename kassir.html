@@ -819,6 +819,10 @@
             })
           });
           writeCompleted = true;
+          const cardId = result.card && result.card.id;
+          if (!cardId) {
+            throw new Error('Möhür əməliyyatı tamamlandı, lakin cavabda kart ID-si yoxdur.');
+          }
           let updatedCustomer = customer;
           let updatedCard = result.card;
           let refreshFailed = false;
@@ -829,7 +833,8 @@
               body: JSON.stringify({
                 slug,
                 pin,
-                customer_id: customerId
+                customer_id: customerId,
+                card_id: cardId
               })
             });
             if (!customerData.customer || !customerData.card) {

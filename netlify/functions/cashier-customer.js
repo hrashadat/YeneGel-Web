@@ -16,8 +16,12 @@ exports.handler = async event => {
     const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
     const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
     const customerId = typeof body.customer_id === 'string' ? body.customer_id.trim() : '';
+    const cardId = typeof body.card_id === 'string' ? body.card_id.trim() : '';
     if (!isValidRestaurantSlug(slug) || !isValidUuid(customerId)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'QR kod etibarsızdır.' }) };
+    }
+    if (body.card_id !== undefined && !isValidUuid(cardId)) {
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Kart ID-si etibarsızdır.' }) };
     }
     if (!/^\d{4}$/.test(pin)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod 4 rəqəm olmalıdır.' }) };
@@ -50,7 +54,7 @@ exports.handler = async event => {
     const cards = await sbFetch(
       url,
       key,
-      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customer.id)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`
+      `loyalty_cards?${cardId ? `id=eq.${encodeURIComponent(cardId)}&` : ''}restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customer.id)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`
     );
     const card = cards?.[0];
     if (!card) {
