@@ -45,7 +45,8 @@
     button { font: inherit; }
     input, textarea, select { font: inherit; font-size: 16px; }
     .app { width: min(100%, 760px); margin: 0 auto; display: grid; gap: 16px; }
-    .app.admin-expanded { width: min(100%, 1120px); }
+    .app.admin-expanded { width: min(100%, 1440px); grid-template-columns: minmax(0, 1fr); }
+    .app.admin-expanded > * { min-width: 0; }
     .slug-error { width: min(100%, 760px); margin: auto; }
     .topbar, .top-actions, .tabs, .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .topbar { min-height: 48px; }
@@ -207,8 +208,8 @@
     .customer .customer-total-spent { color: var(--text); font-weight: 750; }
     .customer .customer-bonus-balance { color: var(--bonus-gold); font-weight: 700; }
     .stamp-count { margin: 14px 0; font-size: 26px; font-weight: 850; }
-    .app.admin-expanded .tabs { padding: 6px; gap: 8px; }
-    .app.admin-expanded .tab { padding: 14px 16px; border-radius: 11px; font-size: 16px; }
+    .app.admin-expanded .tabs { padding: 8px; gap: 10px; }
+    .app.admin-expanded .tab { padding: 17px 20px; border-radius: 12px; font-size: 18px; }
     .actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
     .actions + #bonusRedeemPanel { margin-top: 14px; }
     .danger-zone { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
@@ -221,23 +222,23 @@
     table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
     th, td { padding: 10px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
     th { color: var(--muted); font-size: 11px; }
-    #adminPanel { padding: clamp(20px, 3vw, 36px); }
-    #adminPanel .title { font-size: clamp(22px, 2.4vw, 28px); }
-    #adminPanel .sub { font-size: 15px; line-height: 1.6; }
-    #adminPanel label { margin-bottom: 8px; font-size: 14px; }
-    #adminPanel .input { min-height: 48px; padding: 14px 15px; }
-    #adminPanel #menuInput { min-height: 220px; }
-    #adminPanel .btn { padding: 14px 18px; font-size: 16px; }
-    #adminPanel .field-error { font-size: 14px; }
-    #settingsForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
-    #settingsForm .field { margin-bottom: 20px; }
+    #adminPanel { padding: clamp(24px, 4vw, 48px); border-radius: 24px; }
+    #adminPanel .title { font-size: clamp(26px, 2.6vw, 34px); }
+    #adminPanel .sub { font-size: 17px; line-height: 1.65; }
+    #adminPanel label { margin-bottom: 10px; font-size: 16px; }
+    #adminPanel .input { min-height: 56px; padding: 16px 18px; font-size: 18px; }
+    #adminPanel #menuInput { min-height: 260px; }
+    #adminPanel .btn { padding: 17px 22px; font-size: 18px; }
+    #adminPanel .field-error { font-size: 15px; }
+    #settingsForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 26px; }
+    #settingsForm .field { margin-bottom: 24px; }
     #settingsForm .settings-menu-field,
     #settingsForm #saveSettingsBtn { grid-column: 1 / -1; }
     #adminPanel .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
-    #adminPanel table { font-size: 15px; }
-    #adminPanel th, #adminPanel td { padding: 14px 12px; }
-    #adminPanel th { font-size: 13px; }
-    .customer-search-field { max-width: 680px; margin: 18px 0 14px; }
+    #adminPanel table { font-size: 17px; }
+    #adminPanel th, #adminPanel td { padding: 17px 16px; }
+    #adminPanel th { font-size: 15px; }
+    .customer-search-field { max-width: 860px; margin: 22px 0 18px; }
     @media (max-width: 520px) {
       body { padding: 16px 12px 34px; }
       .card { padding: 17px; }
