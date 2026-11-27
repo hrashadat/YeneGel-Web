@@ -88,13 +88,15 @@ BEGIN
   RETURNING * INTO v_card;
 
   INSERT INTO public.card_transactions (
-    restaurant_id, card_id, visitor_token, tx_type, bill_amount, bonus_delta, stamp_delta
+    restaurant_id, card_id, customer_id, visitor_token, tx_type, amount, bill_amount, bonus_delta, stamp_delta
   )
   VALUES (
     p_restaurant_id,
     v_card.id,
+    p_customer_id,
     p_customer_id::text,
     'stamp',
+    p_amount,
     p_amount,
     v_bonus_delta,
     v_delta

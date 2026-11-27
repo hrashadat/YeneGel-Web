@@ -121,18 +121,20 @@ BEGIN
 
   IF p_stamp_delta = 1 THEN
     INSERT INTO public.card_transactions (
-      restaurant_id, card_id, visitor_token, tx_type, bill_amount, bonus_delta, stamp_delta
+      restaurant_id, card_id, customer_id, visitor_token, tx_type, amount, bill_amount, bonus_delta, stamp_delta
     ) VALUES (
-      p_restaurant_id, v_card.id, p_customer_id::text, 'stamp', p_amount, v_bonus_delta, v_delta
+      p_restaurant_id, v_card.id, p_customer_id, p_customer_id::text, 'stamp', p_amount, p_amount, v_bonus_delta, v_delta
     );
   ELSE
     INSERT INTO public.card_transactions (
-      restaurant_id, card_id, visitor_token, tx_type, bill_amount, bonus_delta, stamp_delta, reverses_transaction_id
+      restaurant_id, card_id, customer_id, visitor_token, tx_type, amount, bill_amount, bonus_delta, stamp_delta, reverses_transaction_id
     ) VALUES (
       p_restaurant_id,
       v_card.id,
+      p_customer_id,
       p_customer_id::text,
       'stamp',
+      0,
       0,
       -v_reversed_bonus,
       -1,
