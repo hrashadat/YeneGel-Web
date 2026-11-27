@@ -1,5 +1,4 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-const { normalizeCard } = require('../lib/loyalty');
 const { constantTimeEqual, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, sbFetch } = require('../lib/supabase');
 const { secureHandler } = require('../lib/security');
@@ -36,7 +35,7 @@ exports.handler = async event => {
     const restaurants = await sbFetch(
       url,
       key,
-      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code,stamp_goal,bonus_mode,bonus_fixed_amount,bonus_percent`
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,pin_code`
     );
     const restaurant = restaurants?.[0];
     if (!restaurant) {
@@ -44,62 +43,6 @@ exports.handler = async event => {
     }
     if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), pin)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'PİN kod yanlışdır.' }) };
-    }
-
-    if (redeemAmount === 0) {
-      const cards = await sbFetch(
-        url,
-        key,
-        `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&visitor_token=eq.${encodeURIComponent(customerId)}&select=id,stamps_count,reward_unlocked,total_spent,bonus_balance,bonus_carryover`
-      );
-      const card = cards?.[0];
-      if (!card) {
-        return { statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Müştəri kartı tapılmadı.' }) };
-      }
-
-      const normalizedBefore = normalizeCard(restaurant, card);
-      const oldCarryover = Number(card.bonus_carryover ?? normalizedBefore?.bonus_carryover ?? 0);
-      const currentCycleBonus = Number(
-        normalizedBefore?.bonus_cycle_balance ??
-        Math.max(0, Number(card.bonus_balance || 0) - oldCarryover)
-      );
-      const safeCurrentBonus = Number.isFinite(currentCycleBonus) ? Math.max(0, currentCycleBonus) : 0;
-      const safeOldCarryover = Number.isFinite(oldCarryover) ? Math.max(0, oldCarryover) : 0;
-      const newCarryover = Number((safeOldCarryover + safeCurrentBonus).toFixed(2));
-
-      await sbFetch(
-        url,
-        key,
-        `loyalty_cards?id=eq.${encodeURIComponent(card.id)}`,
-        {
-          method: 'PATCH',
-          headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify({
-            stamps_count: 0,
-            total_spent: 0,
-            reward_unlocked: false,
-            bonus_carryover: newCarryover,
-            bonus_balance: newCarryover
-          })
-        }
-      );
-
-      const finalCard = {
-        ...normalizedBefore,
-        id: card.id,
-        stamps_count: 0,
-        total_spent: 0,
-        reward_unlocked: false,
-        bonus_carryover: newCarryover,
-        bonus_cycle_balance: 0,
-        bonus_balance: 0
-      };
-
-      return {
-        statusCode: 200,
-        headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
-        body: JSON.stringify({ card: finalCard })
-      };
     }
 
     const result = await sbFetch(url, key, 'rpc/redeem_customer_bonus', {
@@ -110,10 +53,15 @@ exports.handler = async event => {
         p_amount: redeemAmount
       })
     });
-    return { statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify(result) };
+
+    return {
+      statusCode: 200,
+      headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
+      body: JSON.stringify(result)
+    };
   } catch (error) {
     console.error('redeem-bonus error:', error);
-    const clientError = /Aktiv bonus yoxdur|bonus balansından çox|Müştəri kartı tapılmadı|Restoran tapılmadı/i.test(error.message || '');
+    const clientError = /İstifadə ediləcək bonus məbləğini düzgün daxil edin|Müştəri kartı tapılmadı|Restoran tapılmadı/i.test(error.message || '');
     return {
       statusCode: clientError ? 422 : 500,
       headers: JSON_HEADERS,
