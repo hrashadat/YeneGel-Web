@@ -42,7 +42,7 @@ exports.handler = async (event) => {
     const currentPin = typeof body.current_pin === 'string' ? body.current_pin.trim() : '';
 
     if (!isValidRestaurantSlug(slug) || !accessCode || !isBoundedString(accessCode, 256) || !/^\d{4}$/.test(currentPin)) {
-      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Slug, admin kodu və cari kassir PİN kodu tələb olunur.' }) };
+      return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Slug, admin kodu və cari personel PİN kodu tələb olunur.' }) };
     }
 
     const stampGoalValue = typeof body.stamp_goal === 'number' || typeof body.stamp_goal === 'string'
@@ -116,7 +116,7 @@ exports.handler = async (event) => {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Xüsusi giriş kodu yanlışdır.' }) };
     }
     if (!constantTimeEqual(String(existing.pin_code || '').trim(), currentPin)) {
-      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Kassir PİN kodu yanlışdır.' }) };
+      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Personel PİN kodu yanlışdır.' }) };
     }
 
     const patchPayload = {
@@ -166,4 +166,4 @@ exports.handler = async (event) => {
   }
 };
 
-exports.handler = secureHandler('update-restaurant', { limit: 20, maxBodyBytes: 524288 }, exports.handler);
+exports.handler = secureHandler('update-restaurant', { limit: 20, maxBodyBytes: 524
