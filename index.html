@@ -325,8 +325,48 @@
       word-break: break-word;
     }
 
-    #bonusBalanceText { color: #94702b; }
-    body:not(.light-mode) #bonusBalanceText { color: #d7b765; }
+    #bonusBalanceText {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    #bonusMainAmount {
+      display: block;
+      min-width: 0;
+      max-width: 100%;
+      color: #80621f;
+      font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+      font-weight: 800;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    #bonusCarryoverText {
+      display: inline-flex;
+      align-self: flex-start;
+      min-width: 0;
+      max-width: 100%;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #eee9df;
+      color: #6e5a36;
+      font-size: 0.78rem;
+      font-weight: 650;
+      line-height: 1.3;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    body:not(.light-mode) #bonusMainAmount { color: #d7b765; }
+    body:not(.light-mode) #bonusCarryoverText {
+      background: #3a3832;
+      color: #d6c9a7;
+    }
 
     .actions {
       display: flex;
@@ -728,7 +768,10 @@
         </div>
         <div class="stat-box">
           <small>Cari bonus</small>
-          <strong id="bonusBalanceText">0.00 AZN</strong>
+          <strong id="bonusBalanceText">
+            <span id="bonusMainAmount">0.00 AZN</span>
+            <span id="bonusCarryoverText">+ 0.00 AZN keçmişdən qalan</span>
+          </strong>
         </div>
       </div>
       <div class="about-card" style="box-shadow:none;padding:14px 0 0;border:0;text-align:center">
@@ -888,9 +931,10 @@
         document.getElementById('totalSpentText').textContent = `${Number(card.total_spent || 0).toFixed(2)} AZN`;
         const carryover = Number(card.bonus_carryover || 0);
         const mainBonus = Math.max(0, Number(card.bonus_balance || 0) - carryover);
-        document.getElementById('bonusBalanceText').textContent = t(
-          '{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)',
-          { amount: mainBonus.toFixed(2), carryover: carryover.toFixed(2) }
+        document.getElementById('bonusMainAmount').textContent = `${mainBonus.toFixed(2)} AZN`;
+        document.getElementById('bonusCarryoverText').textContent = t(
+          '+ {{amount}} AZN keçmişdən qalan',
+          { amount: carryover.toFixed(2) }
         );
 
         document.getElementById('customerName').textContent =

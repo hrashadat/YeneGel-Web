@@ -151,6 +151,10 @@
     'möhür': ['печати', 'stamps'],
     'Bizdə bu qədər bonus var': ['Ваш бонусный баланс', 'Your bonus balance'],
     'Cari bonus': ['Текущий бонус', 'Current bonus'],
+    '+ {{amount}} AZN keçmişdən qalan': [
+      '+ {{amount}} AZN с прошлого раза',
+      '+ {{amount}} AZN rollover'
+    ],
     '{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)': [
       '{{amount}} AZN (+ {{carryover}} AZN из прошлых периодов)',
       '{{amount}} AZN (+ {{carryover}} AZN carried over)'
