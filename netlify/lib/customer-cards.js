@@ -37,10 +37,8 @@ async function ensureCustomerCard(url, key, restaurantId, customerId, legacyToke
         restaurant_id: restaurantId,
         visitor_token: customerId,
         stamps_count: 0,
-        reward_unlocked: false,
         total_spent: 0,
-        bonus_balance: 0,
-        bonus_carryover: 0
+        bonus_balance: 0
       })
     });
   } catch (error) {
