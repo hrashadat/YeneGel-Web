@@ -83,6 +83,7 @@
     'Bonus məbləği (AZN)': ['Сумма бонуса (AZN)', 'Bonus amount (AZN)'],
     'Bonus faizi (%)': ['Процент бонуса (%)', 'Bonus percentage (%)'],
     'Mövcud bonus: {{amount}} AZN': ['Доступный бонус: {{amount}} AZN', 'Available bonus: {{amount}} AZN'],
+    'Ümumi istifadə limiti: {{amount}} AZN': ['Общий лимит использования: {{amount}} AZN', 'Total redeemable: {{amount}} AZN'],
     'Bonus banner mətni': ['Текст баннера бонуса', 'Bonus banner text'],
     'Restoran adı': ['Название ресторана', 'Restaurant name'],
     'Restoran haqqında': ['О ресторане', 'About the restaurant'],

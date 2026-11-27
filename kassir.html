@@ -540,13 +540,6 @@
             ? t('Bonus faizi (%)')
             : t('Bonus məbləği (AZN)');
         document.getElementById('adminSlug').textContent = t('Restoran kodu: {{slug}}', { slug });
-        const bonusInput = document.getElementById('bonusRedeemAmountInput');
-        if (bonusInput.max) {
-          document.getElementById('bonusRedeemAvailable').textContent = t(
-            'Mövcud bonus: {{amount}} AZN',
-            { amount: bonusInput.max }
-          );
-        }
         document.querySelectorAll('.msg').forEach(element => {
           if (element.textContent) element.textContent = t(element.textContent);
         });
@@ -846,6 +839,15 @@
         showMessage(document.getElementById('scannerMsg'), '', false);
       }
 
+      function getBonusRedemptionAmounts(card) {
+        const cardBonus = Number(card?.bonus_cycle_balance ?? card?.bonus_balance ?? 0);
+        const carryoverValue = Number(card?.bonus_carryover || 0);
+        const currentBonus = Number.isFinite(cardBonus) ? Math.max(0, cardBonus) : 0;
+        const carryoverBonus = Number.isFinite(carryoverValue) ? Math.max(0, carryoverValue) : 0;
+        const maxRedeemable = Number((currentBonus + carryoverBonus).toFixed(2));
+        return { currentBonus, carryoverBonus, maxRedeemable };
+      }
+
       function renderScannedCustomer(card, resetInputs = true) {
         lastScannedCard = card;
         document.getElementById('customerName').textContent =
@@ -863,21 +865,22 @@
         document.getElementById('customerTotalSpent').textContent = t('Toplam hesab: {{amount}} AZN', {
           amount: Number(card.total_spent || 0).toFixed(2)
         });
-        const currentBonus = Number(card.bonus_cycle_balance ?? card.bonus_balance ?? 0);
-        const carryover = Number(card.bonus_carryover || 0);
-        const totalBonus = currentBonus + carryover;
+        const { currentBonus, carryoverBonus, maxRedeemable } = getBonusRedemptionAmounts(card);
         document.getElementById('customerBonusBalance').textContent = t(
           '{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)',
-          { amount: currentBonus.toFixed(2), carryover: carryover.toFixed(2) }
+          { amount: currentBonus.toFixed(2), carryover: carryoverBonus.toFixed(2) }
         );
         const bonusPanel = document.getElementById('bonusRedeemPanel');
         const redeemButton = document.getElementById('openBonusRedeemBtn');
         const redeemInput = document.getElementById('bonusRedeemAmountInput');
-        const hasBonus = Number.isFinite(totalBonus) && totalBonus > 0;
+        const hasBonus = maxRedeemable > 0;
+        const limitMessage = carryoverBonus > 0
+          ? 'Ümumi istifadə limiti: {{amount}} AZN'
+          : 'Mövcud bonus: {{amount}} AZN';
         bonusPanel.classList.toggle('hidden', !hasBonus);
-        redeemInput.max = hasBonus ? totalBonus.toFixed(2) : '';
+        redeemInput.max = hasBonus ? maxRedeemable.toFixed(2) : '';
         document.getElementById('bonusRedeemAvailable').textContent = hasBonus
-          ? t('Mövcud bonus: {{amount}} AZN', { amount: totalBonus.toFixed(2) })
+          ? t(limitMessage, { amount: maxRedeemable.toFixed(2) })
           : '';
         if (resetInputs) redeemInput.value = '';
         redeemButton.disabled = stamps < goal;
@@ -1077,10 +1080,11 @@
         if (!selectedCustomer) return;
         const input = document.getElementById('bonusRedeemAmountInput');
         const amount = Number(input.value);
+        const { maxRedeemable } = getBonusRedemptionAmounts(lastScannedCard);
         const button = document.getElementById('confirmBonusRedeemBtn');
         const message = document.getElementById('bonusRedeemMsg');
         const operationMessage = document.getElementById('operationMsg');
-        if (!Number.isFinite(amount) || amount <= 0 || amount > Number(input.max)) {
+        if (!Number.isFinite(amount) || amount <= 0 || amount > maxRedeemable) {
           showMessage(message, 'İstifadə ediləcək bonus məbləğini düzgün daxil edin.', true);
           return;
         }
