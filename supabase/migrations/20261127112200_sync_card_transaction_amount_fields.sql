@@ -114,7 +114,7 @@ BEGIN
     SELECT tx.* INTO v_last_stamp
     FROM public.card_transactions tx
     WHERE tx.card_id = v_card.id
-      AND tx.tx_type = 'stamp'
+      AND tx.tx_type = 'stamp_added'
       AND tx.stamp_delta = 1
       AND NOT EXISTS (
         SELECT 1
@@ -148,19 +148,20 @@ BEGIN
 
   IF p_stamp_delta = 1 THEN
     INSERT INTO public.card_transactions (
-      restaurant_id, card_id, customer_id, visitor_token, tx_type, amount, bill_amount, bonus_delta, stamp_delta
+      restaurant_id, card_id, customer_id, visitor_token, action, tx_type, amount, bill_amount, bonus_delta, stamp_delta
     ) VALUES (
-      p_restaurant_id, v_card.id, p_customer_id, p_customer_id::text, 'stamp', p_amount, p_amount, v_bonus_delta, v_delta
+      p_restaurant_id, v_card.id, p_customer_id, p_customer_id::text, 'stamp_added', 'stamp_added', p_amount, p_amount, v_bonus_delta, v_delta
     );
   ELSE
     INSERT INTO public.card_transactions (
-      restaurant_id, card_id, customer_id, visitor_token, tx_type, amount, bill_amount, bonus_delta, stamp_delta, reverses_transaction_id
+      restaurant_id, card_id, customer_id, visitor_token, action, tx_type, amount, bill_amount, bonus_delta, stamp_delta, reverses_transaction_id
     ) VALUES (
       p_restaurant_id,
       v_card.id,
       p_customer_id,
       p_customer_id::text,
-      'stamp',
+      'stamp_removed',
+      'stamp_removed',
       0,
       0,
       -v_reversed_bonus,
@@ -248,9 +249,9 @@ BEGIN
   RETURNING * INTO v_card;
 
   INSERT INTO public.card_transactions (
-    restaurant_id, card_id, customer_id, visitor_token, tx_type, amount, bill_amount, bonus_delta, stamp_delta
+    restaurant_id, card_id, customer_id, visitor_token, action, tx_type, amount, bill_amount, bonus_delta, stamp_delta
   ) VALUES (
-    p_restaurant_id, v_card.id, p_customer_id, p_customer_id::text, 'redeem', 0, 0, -p_amount, 0
+    p_restaurant_id, v_card.id, p_customer_id, p_customer_id::text, 'redeem', 'redeem', 0, 0, -p_amount, 0
   );
 
   RETURN jsonb_build_object(

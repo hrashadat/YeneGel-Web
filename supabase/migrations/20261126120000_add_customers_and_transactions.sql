@@ -104,14 +104,15 @@ BEGIN
   RETURNING * INTO v_card;
 
   INSERT INTO public.card_transactions (
-    restaurant_id, card_id, customer_id, visitor_token, tx_type, amount, bill_amount, bonus_delta, stamp_delta
+    restaurant_id, card_id, customer_id, visitor_token, action, tx_type, amount, bill_amount, bonus_delta, stamp_delta
   )
   VALUES (
     p_restaurant_id,
     v_card.id,
     p_customer_id,
     p_customer_id::text,
-    'stamp',
+    CASE WHEN p_stamp_delta = 1 THEN 'stamp_added' ELSE 'stamp_removed' END,
+    CASE WHEN p_stamp_delta = 1 THEN 'stamp_added' ELSE 'stamp_removed' END,
     p_amount,
     p_amount,
     v_bonus_delta,
