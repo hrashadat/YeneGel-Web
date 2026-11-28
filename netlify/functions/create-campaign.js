@@ -30,7 +30,8 @@ exports.handler = async event => {
     return { statusCode: 201, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, body: JSON.stringify({ expires_at: expiresAt, count: validIds.length }) };
   } catch (error) {
     console.error('create-campaign error:', error);
-    return { statusCode: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: getSupabaseErrorMessage(error), code: error.code || 'SERVER_ERROR' }) };
+    const migrationIssue = ['42703', '42P01', 'PGRST204'].includes(error.code);
+    return { statusCode: migrationIssue ? 503 : 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: migrationIssue ? 'Kampaniya cədvəl və sütunları tapılmadı. Supabase-də 20261128200000_customer_phones_campaigns.sql migration-ını tətbiq edin.' : getSupabaseErrorMessage(error), code: error.code || 'SERVER_ERROR' }) };
   }
 };
 exports.handler = secureHandler('create-campaign', { limit: 10, preserveServerErrorResponse: true }, exports.handler);

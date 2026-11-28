@@ -437,7 +437,7 @@
           <p class="sub">Son 500 qeydiyyatdan keçmiş müştəri və onların cari kart balansı.</p>
           <div class="field customer-search-field">
             <label for="customerSearchInput">Müştərilərdə axtar</label>
-            <input id="customerSearchInput" class="input" type="search" autocomplete="off" placeholder="Ad, hesab adı və ya telefonla axtar" />
+            <input id="customerSearchInput" class="input" type="search" autocomplete="off" placeholder="Ad Soyad və ya telefonla axtar" />
           </div>
           <div class="field"><label for="stampFilter">Çərtik filtri</label><select id="stampFilter" class="input"><option value="all">Hamısı</option><option value="0">0 çərtik</option><option value="1-2">1–2</option><option value="3-5">3–5</option><option value="5-10">5–10</option><option value="10+">10+</option><option value="bonus">Bonusu olanlar</option><option value="oneleft">Son 1 çərtik qalanlar</option><option value="custom">Xüsusi aralıq</option></select></div>
           <div class="field" id="customStampRange" style="display:none"><label>Çərtik aralığı (min–max)</label><div style="display:flex;gap:8px"><input id="stampMin" class="input" type="number" min="0" placeholder="Min"/><input id="stampMax" class="input" type="number" min="0" placeholder="Max"/></div></div>
@@ -448,7 +448,7 @@
           <div id="customerListMsg" class="msg"></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Ad / hesab</th><th>Telefon</th><th>Çərtik</th><th>Xərcləmə</th><th>Bonus / qalıq</th><th>Bonusa qalan</th><th>Qeydiyyat</th><th>Son aktivlik</th></tr></thead>
+              <thead><tr><th>Ad Soyad</th><th>Telefon</th><th>Çərtik</th><th>Xərcləmə</th><th>Bonus / qalıq</th><th>Bonusa qalan</th><th>Qeydiyyat</th><th>Son aktivlik</th></tr></thead>
               <tbody id="customerRows"></tbody>
             </table>
           </div>
@@ -531,6 +531,11 @@
       const formatSlug = value => {
         const clean = String(value || '').trim().replace(/^\/+/, '');
         return clean ? `/${clean}` : '';
+      };
+      const formatPhone = value => {
+        const digits = String(value || '').replace(/\D/g, '');
+        const local = digits.startsWith('994') && digits.length === 12 ? digits.slice(3) : digits.startsWith('0') && digits.length === 10 ? digits.slice(1) : digits;
+        return [local.slice(0, 2), local.slice(2, 5), local.slice(5, 7), local.slice(7, 9)].filter(Boolean).join('-');
       };
       pinScreen.classList.remove('hidden');
       workspace.classList.add('hidden');
@@ -930,9 +935,9 @@
       function renderScannedCustomer(card, resetInputs = true) {
         lastScannedCard = card;
         document.getElementById('customerName').textContent =
-          selectedCustomer.account_name || [selectedCustomer.first_name, selectedCustomer.last_name].filter(Boolean).join(' ');
+          [selectedCustomer.first_name, selectedCustomer.last_name].filter(Boolean).join(' ') || selectedCustomer.account_name;
         const phoneElement = document.getElementById('customerPhone');
-        phoneElement.textContent = selectedCustomer.phone ? t('Telefon: {{phone}}', { phone: selectedCustomer.phone }) : '';
+        phoneElement.textContent = selectedCustomer.phone ? t('Telefon: {{phone}}', { phone: formatPhone(selectedCustomer.phone) }) : '';
         phoneElement.classList.toggle('hidden', !selectedCustomer.phone);
         document.getElementById('customerId').textContent = t('ID: {{id}}', { id: selectedCustomer.id });
         const stamps = Number(card.stamps_count || 0);
@@ -1300,12 +1305,12 @@
           const links = document.getElementById('campaignLinks'); links.replaceChildren();
           [...document.querySelectorAll('#customerRows tr:not([hidden]) .customer-select:checked')].forEach(box => {
             const row = box.closest('tr'), phone = row.dataset.phone; if (!phone) return;
-            const digits = phone.replace(/\D/g, ''), encoded = encodeURIComponent(message);
+            const digits = phone.replace(/\D/g, ''), local = digits.startsWith('994') && digits.length === 12 ? digits.slice(3) : digits.startsWith('0') && digits.length === 10 ? digits.slice(1) : digits, encoded = encodeURIComponent(message);
             const item = document.createElement('p'); item.textContent = `${row.dataset.name || 'Müştəri'}: `;
-            const wa = document.createElement('a'); wa.href = `https://wa.me/${digits}?text=${encoded}`; wa.target = '_blank'; wa.rel = 'noopener'; wa.textContent = 'WhatsApp';
-            const sms = document.createElement('a'); sms.href = `sms:+${digits}?body=${encoded}`; sms.textContent = 'SMS'; item.append(wa, document.createTextNode(' · '), sms); links.append(item);
+            const wa = document.createElement('a'); wa.href = `https://wa.me/994${local}?text=${encoded}`; wa.target = '_blank'; wa.rel = 'noopener'; wa.textContent = 'WhatsApp';
+            const sms = document.createElement('a'); sms.href = `sms:+994${local}?body=${encoded}`; sms.textContent = 'SMS'; item.append(wa, document.createTextNode(' · '), sms); links.append(item);
           });
-          links.dataset.copy = `${[...document.querySelectorAll('#customerRows tr:not([hidden]) .customer-select:checked')].map(box => box.closest('tr').dataset.phone).filter(Boolean).join(', ')}\n${message}`;
+          links.dataset.copy = `${[...document.querySelectorAll('#customerRows tr:not([hidden]) .customer-select:checked')].map(box => formatPhone(box.closest('tr').dataset.phone)).filter(Boolean).join(', ')}\n${message}`;
           const notice = document.createElement('p'); notice.textContent = `Kampaniya ${result.count} müştəri üçün ${hours} saat aktivdir. Mesajı pulsuz WhatsApp/SMS tətbiqində özünüz göndərin.`; links.prepend(notice);
         } catch (error) { showMessage(document.getElementById('campaignLinks'), error.message || 'Kampaniya hazırlana bilmədi.', true); }
         finally { button.disabled = false; }
@@ -1332,12 +1337,12 @@
             row.dataset.bonus = String(customer.card.bonus_balance || 0);
             row.dataset.stamps = String(customer.card.stamps_count || 0);
             row.dataset.goal = String(restaurant.stamp_goal || 5);
-            row.dataset.customerId = customer.id; row.dataset.phone = customer.phone || ''; row.dataset.name = customer.account_name || '';
+            row.dataset.customerId = customer.id; row.dataset.phone = customer.phone || ''; row.dataset.name = customer.full_name || customer.account_name || '';
             row.dataset.spent = String(customer.card.total_spent || 0);
             const remainingBonus = Math.max(0, Number(restaurant.bonus_fixed_amount || 0) - Number(customer.card.bonus_balance || 0)).toFixed(2);
             row.dataset.remaining = remainingBonus;
             const values = [
-              customer.account_name || '—',
+              customer.full_name || customer.account_name || '—',
               customer.phone || '—',
               String(customer.card.stamps_count || 0),
               `${Number(customer.card.total_spent || 0).toFixed(2)} AZN`,
@@ -1350,13 +1355,15 @@
             ];
             values.forEach((value, index) => {
               const cell = document.createElement('td');
-              if (index === 0) { const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'customer-select'; check.setAttribute('aria-label', `${customer.account_name || 'Müştəri'} seç`); cell.append(check, document.createTextNode(' ')); }
+              if (index === 0) { const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'customer-select'; check.setAttribute('aria-label', `${customer.full_name || customer.account_name || 'Müştəri'} seç`); cell.append(check, document.createTextNode(' ')); }
               if (index === 1 && customer.phone) {
-                const normalized = String(customer.phone).replace(/\D/g, '');
-                const wa = document.createElement('a'); wa.href = `https://wa.me/${normalized}`; wa.target = '_blank'; wa.rel = 'noopener'; wa.textContent = customer.phone; cell.append(wa, document.createTextNode(' '));
-                const tel = document.createElement('a'); tel.href = `tel:+${normalized}`; tel.textContent = 'Zəng'; cell.append(tel, document.createTextNode(' '));
-                const sms = document.createElement('a'); sms.href = `sms:+${normalized}`; sms.textContent = 'SMS'; cell.append(sms, document.createTextNode(' '));
-                const copy = document.createElement('button'); copy.type = 'button'; copy.textContent = 'Kopyala'; copy.addEventListener('click', () => navigator.clipboard?.writeText(customer.phone)); cell.append(copy);
+                const digits = String(customer.phone).replace(/\D/g, '');
+                const local = digits.startsWith('994') && digits.length === 12 ? digits.slice(3) : digits.startsWith('0') && digits.length === 10 ? digits.slice(1) : digits;
+                const formatted = formatPhone(customer.phone);
+                const wa = document.createElement('a'); wa.href = `https://wa.me/994${local}`; wa.target = '_blank'; wa.rel = 'noopener'; wa.textContent = formatted; cell.append(wa, document.createTextNode(' '));
+                const tel = document.createElement('a'); tel.href = `tel:+994${local}`; tel.textContent = 'Zəng'; cell.append(tel, document.createTextNode(' '));
+                const sms = document.createElement('a'); sms.href = `sms:+994${local}`; sms.textContent = 'SMS'; cell.append(sms, document.createTextNode(' '));
+                const copy = document.createElement('button'); copy.type = 'button'; copy.textContent = 'Kopyala'; copy.addEventListener('click', () => navigator.clipboard?.writeText(formatted)); cell.append(copy);
               } else cell.append(document.createTextNode(value));
               row.appendChild(cell);
             });
@@ -1391,6 +1398,7 @@
           }
           restaurant = { ...restaurant, ...data.restaurant };
           fillSettings(restaurant);
+          if (data.warning) showMessage(document.getElementById('settingsMsg'), data.warning, true);
           document.getElementById('adminLogin').classList.add('hidden');
           document.getElementById('adminContent').classList.remove('hidden');
           await loadCustomers();
@@ -1464,7 +1472,7 @@
           restaurant = { ...restaurant, ...data.restaurant };
           if (payload.cashier_pin) cashierPin = payload.cashier_pin;
           fillSettings(restaurant);
-          showMessage(message, 'Dəyişikliklər yadda saxlanıldı.', false);
+          showMessage(message, data.warning || 'Dəyişikliklər yadda saxlanıldı.', Boolean(data.warning));
         } catch (error) {
           const errorText = error.message || 'Dəyişiklikləri yadda saxlamaq alınmadı.';
           showSettingsFieldError(error.field, errorText);

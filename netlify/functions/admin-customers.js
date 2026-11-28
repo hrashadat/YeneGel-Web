@@ -54,6 +54,7 @@ exports.handler = async event => {
       body: JSON.stringify({
         customers: (customers || []).map(customer => ({
           ...customer,
+          full_name: [customer.first_name, customer.last_name].filter(Boolean).join(' ') || customer.account_name || '—',
           card: normalizeCard(
             restaurant,
             cardsByCustomerId.get(customer.id) || {
@@ -71,7 +72,7 @@ exports.handler = async event => {
   } catch (err) {
     console.error('admin-customers error:', err);
     return {
-      statusCode: 500,
+      statusCode: ['42703', '42P01', 'PGRST204'].includes(err.code) ? 503 : 500,
       headers: JSON_HEADERS,
       body: JSON.stringify({ error: getSupabaseErrorMessage(err), code: err.code || 'SERVER_ERROR' })
     };

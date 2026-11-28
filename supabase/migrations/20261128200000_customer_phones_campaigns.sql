@@ -1,13 +1,43 @@
 ALTER TABLE public.customers ALTER COLUMN phone DROP NOT NULL;
+DROP INDEX IF EXISTS public.customers_restaurant_phone_uidx;
+WITH phone_candidates AS (
+  SELECT id,
+         CASE
+           WHEN length(regexp_replace(phone, '[^0-9]', '', 'g')) = 12
+             AND left(regexp_replace(phone, '[^0-9]', '', 'g'), 3) = '994'
+             THEN right(regexp_replace(phone, '[^0-9]', '', 'g'), 9)
+           WHEN length(regexp_replace(phone, '[^0-9]', '', 'g')) = 10
+             AND left(regexp_replace(phone, '[^0-9]', '', 'g'), 1) = '0'
+             THEN right(regexp_replace(phone, '[^0-9]', '', 'g'), 9)
+           WHEN length(regexp_replace(phone, '[^0-9]', '', 'g')) = 9
+             THEN regexp_replace(phone, '[^0-9]', '', 'g')
+           ELSE NULL
+         END AS local_phone,
+         row_number() OVER (
+           PARTITION BY restaurant_id,
+             CASE
+               WHEN length(regexp_replace(phone, '[^0-9]', '', 'g')) = 12 AND left(regexp_replace(phone, '[^0-9]', '', 'g'), 3) = '994' THEN right(regexp_replace(phone, '[^0-9]', '', 'g'), 9)
+               WHEN length(regexp_replace(phone, '[^0-9]', '', 'g')) = 10 AND left(regexp_replace(phone, '[^0-9]', '', 'g'), 1) = '0' THEN right(regexp_replace(phone, '[^0-9]', '', 'g'), 9)
+               WHEN length(regexp_replace(phone, '[^0-9]', '', 'g')) = 9 THEN regexp_replace(phone, '[^0-9]', '', 'g')
+               ELSE NULL
+             END
+           ORDER BY created_at, id
+         ) AS duplicate_rank
+  FROM public.customers
+  WHERE phone IS NOT NULL
+)
+UPDATE public.customers AS customer
+SET phone = CASE WHEN candidate.duplicate_rank = 1 THEN candidate.local_phone ELSE NULL END
+FROM phone_candidates AS candidate
+WHERE customer.id = candidate.id;
 ALTER TABLE public.customers DROP CONSTRAINT IF EXISTS customers_phone_format;
 ALTER TABLE public.customers ADD CONSTRAINT customers_phone_format
-  CHECK (phone IS NULL OR phone ~ '^\+994[0-9]{9}$');
-DROP INDEX IF EXISTS public.customers_restaurant_phone_uidx;
+  CHECK (phone IS NULL OR phone ~ '^[0-9]{9}$');
 CREATE UNIQUE INDEX IF NOT EXISTS customers_restaurant_phone_uidx
   ON public.customers (restaurant_id, phone) WHERE phone IS NOT NULL;
 ALTER TABLE public.restaurants
   ADD COLUMN IF NOT EXISTS campaign_default_hours integer NOT NULL DEFAULT 1 CHECK (campaign_default_hours BETWEEN 1 AND 720),
-  ADD COLUMN IF NOT EXISTS campaign_default_message text NOT NULL DEFAULT 'Sizə xüsusi bonus fürsəti!';
+  ADD COLUMN IF NOT EXISTS campaign_default_message text NOT NULL DEFAULT 'Special bonus offer!';
 
 CREATE TABLE IF NOT EXISTS public.bonus_boosts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -83,3 +113,5 @@ DROP TRIGGER IF EXISTS card_transactions_apply_bonus_boost_balance ON public.car
 CREATE CONSTRAINT TRIGGER card_transactions_apply_bonus_boost_balance
 AFTER INSERT ON public.card_transactions DEFERRABLE INITIALLY DEFERRED FOR EACH ROW
 EXECUTE FUNCTION public.apply_bonus_boost_balance_delta();
+
+NOTIFY pgrst, 'reload schema';

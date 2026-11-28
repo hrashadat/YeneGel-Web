@@ -4,10 +4,9 @@ const {
   getCustomerColumns,
   hashAccessCode,
   isValidAccessCode,
-  isValidAccountName,
-  normalizeAccountName,
   resolveCustomerSchemaColumns
 } = require('../lib/customer-credentials');
+const { normalizeAzerbaijanPhone } = require('../lib/phone');
 const { encodeQueryValue, isValidRestaurantSlug, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, getSupabaseErrorMessage, sbFetch } = require('../lib/supabase');
 const { secureHandler } = require('../lib/security');
@@ -32,21 +31,18 @@ exports.handler = async event => {
     }
 
     const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
-    const accountName = typeof body.account_name === 'string' ? normalizeAccountName(body.account_name) : '';
+    const nameInput = body.full_name ?? body.account_name;
+    const fullName = typeof nameInput === 'string' ? nameInput.normalize('NFKC').trim().replace(/\s+/gu, ' ') : '';
     const accessCode = typeof body.access_code === 'string' ? body.access_code : '';
     const rawPhone = typeof body.phone === 'string' ? body.phone : '';
-    const phoneDigits = rawPhone.replace(/\D/g, '');
-    const phoneLocal = phoneDigits.startsWith('994') ? phoneDigits.slice(3) : phoneDigits.startsWith('0') ? phoneDigits.slice(1) : phoneDigits;
-    if (!/^\d{9}$/.test(phoneLocal)) return jsonResponse(400, { error: 'Telefon nömrəsi +994 formatında 9 rəqəm olmalıdır.' });
-    const phone = `+994${phoneLocal}`;
+    const phone = normalizeAzerbaijanPhone(rawPhone);
+    if (!phone) return jsonResponse(400, { error: 'Telefonu 50-123-45-67 formatında daxil edin.' });
     const legacyToken = typeof body.legacy_visitor_token === 'string' ? body.legacy_visitor_token.trim() : '';
     if (!isValidRestaurantSlug(slug) || legacyToken.length > 180) {
       return jsonResponse(400, { error: 'Sorğu məlumatı etibarsızdır.' });
     }
-    if (!isValidAccountName(accountName)) {
-      return jsonResponse(400, {
-        error: 'Hesab adında hərf, rəqəm, boşluq, nöqtə, tire və alt xətt istifadə edin.'
-      });
+    if (Array.from(fullName).length < 2 || Array.from(fullName).length > 80 || /\p{C}/u.test(fullName)) {
+      return jsonResponse(400, { error: 'Ad Soyad 2–80 simvol aralığında olmalıdır.' });
     }
     if (!isValidAccessCode(accessCode)) {
       return jsonResponse(400, { error: 'Kod 4–32 simvoldan ibarət olmalıdır.' });
@@ -69,23 +65,23 @@ exports.handler = async event => {
     const existing = await sbFetch(
       url,
       key,
-      `customers?restaurant_id=eq.${encodeQueryValue(restaurant.id)}&${accountColumn}=eq.${encodeQueryValue(accountName)}&select=id`
+      `customers?restaurant_id=eq.${encodeQueryValue(restaurant.id)}&phone=eq.${encodeQueryValue(phone)}&select=id`
     );
     if (existing?.length) {
-      return jsonResponse(409, { error: 'Bu hesab adı artıq istifadə olunur. Başqa hesab adı seçin.' });
+      return jsonResponse(409, { error: 'Bu telefon nömrəsi artıq qeydiyyatdan keçib. Daxil olun.' });
     }
 
     const accessCodeHash = await hashAccessCode(accessCode);
     const customerData = {
       restaurant_id: restaurant.id,
-      [accountColumn]: accountName
+      [accountColumn]: phone
     };
     const writableCredentialColumns = credentialColumns.filter(column => column !== 'pin_hash');
     const targetCredentialColumns = writableCredentialColumns.length ? writableCredentialColumns : credentialColumns;
     targetCredentialColumns.forEach(column => {
       customerData[column] = accessCodeHash;
     });
-    if (customerColumns.has('first_name')) customerData.first_name = accountName;
+    if (customerColumns.has('first_name')) customerData.first_name = fullName;
     if (customerColumns.has('last_name')) customerData.last_name = '';
     if (customerColumns.has('phone')) customerData.phone = phone;
     const responseColumns = ['id', accountColumn, 'first_name', 'last_name', 'phone']
@@ -100,7 +96,7 @@ exports.handler = async event => {
       customer = inserted?.[0];
     } catch (error) {
       if (error.code === '23505') {
-        return jsonResponse(409, { error: 'Bu hesab adı artıq istifadə olunur. Başqa hesab adı seçin.' });
+        return jsonResponse(409, { error: 'Bu telefon nömrəsi artıq qeydiyyatdan keçib. Daxil olun.' });
       }
       throw error;
     }
@@ -112,7 +108,7 @@ exports.handler = async event => {
       customer: {
         id: customer.id,
         account_name: customer[accountColumn],
-        first_name: customer.first_name || customer[accountColumn],
+        first_name: customer.first_name || fullName,
         last_name: customer.last_name || '',
         phone: customer.phone || null
       }
@@ -126,7 +122,7 @@ exports.handler = async event => {
       hint: error.hint || null,
       cause: error.cause?.code || error.cause?.message || null
     });
-    return jsonResponse(500, {
+    return jsonResponse(['42703', '42P01', 'PGRST204'].includes(error.code) ? 503 : 500, {
       error: getSupabaseErrorMessage(error),
       code: error.code || 'SERVER_ERROR'
     });

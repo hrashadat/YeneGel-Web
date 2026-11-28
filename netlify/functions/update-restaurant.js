@@ -139,16 +139,22 @@ exports.handler = async (event) => {
 
     patchPayload[bonusMode === 'percent' ? 'bonus_percent' : 'bonus_fixed_amount'] = bonusValue;
 
-    const updated = await sbFetch(
-      url,
-      key,
-      `restaurants?id=eq.${encodeURIComponent(existing.id)}`,
-      {
-        method: 'PATCH',
-        headers: { Prefer: 'return=representation' },
-        body: JSON.stringify(patchPayload)
-      }
-    );
+    let updated;
+    let campaignDefaultsSaved = true;
+    try {
+      updated = await sbFetch(url, key, `restaurants?id=eq.${encodeURIComponent(existing.id)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(patchPayload)
+      });
+    } catch (error) {
+      if (error.code !== '42703' && error.code !== 'PGRST204') throw error;
+      campaignDefaultsSaved = false;
+      const legacyPayload = { ...patchPayload };
+      delete legacyPayload.campaign_default_hours;
+      delete legacyPayload.campaign_default_message;
+      updated = await sbFetch(url, key, `restaurants?id=eq.${encodeURIComponent(existing.id)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(legacyPayload)
+      });
+    }
 
     const updatedRow = updated?.[0];
     if (!updatedRow) {
@@ -159,13 +165,13 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: JSON_HEADERS,
-      body: JSON.stringify({ restaurant: safeUpdated })
+      body: JSON.stringify({ restaurant: safeUpdated, warning: campaignDefaultsSaved ? null : 'Kampaniya standartları saxlanmadı. 20261128200000_customer_phones_campaigns.sql migration-ını Supabase-də tətbiq edin.' })
     };
 
   } catch (err) {
     console.error('update-restaurant error:', err);
     return {
-      statusCode: 500,
+      statusCode: ['42703', '42P01', 'PGRST204'].includes(err.code) ? 503 : 500,
       headers: JSON_HEADERS,
       body: JSON.stringify({ error: getSupabaseErrorMessage(err), code: err.code || 'SERVER_ERROR' })
     };
