@@ -1,0 +1,1381 @@
+﻿<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Daimi — Personel və Admin</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f7f6f2;
+      --surface: #fff;
+      --soft: #f7f6f2;
+      --border: #e5e2dc;
+      --text: #181816;
+      --muted: #786b59;
+      --accent: #181816;
+      --accent-text: #fff;
+      --danger: #a33d32;
+      --success: #3d6b4e;
+      --bonus-gold: #80621f;
+      --shadow: 0 10px 30px rgba(24, 24, 22, .05);
+    }
+    body:not(.light-mode) {
+      color-scheme: dark;
+      --page: #181816;
+      --surface: #242320;
+      --soft: #302e2a;
+      --border: #49453f;
+      --text: #f7f5f0;
+      --muted: #c0b6a8;
+      --accent: #f7f5f0;
+      --accent-text: #181816;
+      --bonus-gold: #d7b765;
+      --shadow: 0 12px 32px rgba(0, 0, 0, .2);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+      background: var(--page);
+      color: var(--text);
+      font: 15px system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    button { font: inherit; }
+    input, textarea, select { font: inherit; font-size: 16px; }
+    .app { width: min(100%, 760px); margin: 0 auto; display: grid; gap: 16px; }
+    .app.admin-expanded { width: min(100%, 920px); grid-template-columns: minmax(0, 1fr); }
+    .app.admin-expanded > * { min-width: 0; }
+    .slug-error { width: min(100%, 760px); margin: auto; }
+    .topbar, .top-actions, .tabs, .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .topbar { min-height: 48px; }
+    .top-actions { flex-direction: column; align-items: flex-end; gap: 3px; }
+    .theme-switch {
+      display: inline-flex;
+      flex: 0 0 auto;
+      padding: 3px;
+      gap: 3px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--surface);
+      box-shadow: 0 3px 12px rgba(24, 24, 22, .04);
+    }
+    .theme-btn {
+      padding: 7px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .theme-btn.active { background: var(--accent); color: var(--accent-text); }
+    .brand strong { display: block; font-size: 18px; }
+    .brand span { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: 1.6px; }
+    .card { padding: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); }
+    .title { margin: 0 0 7px; font-size: 18px; font-weight: 800; }
+    .sub { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .field { margin-bottom: 14px; }
+    label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .input { width: 100%; padding: 12px 13px; border: 1px solid var(--border); border-radius: 11px; outline: none; background: var(--soft); color: var(--text); }
+    .input:focus { border-color: var(--muted); }
+    textarea.input { min-height: 130px; resize: vertical; font-family: ui-monospace, Consolas, monospace; }
+    .btn { padding: 11px 15px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); color: var(--text); font-weight: 750; cursor: pointer; }
+    .btn-primary { width: 100%; border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .tabs { justify-content: flex-start; padding: 4px; border: 1px solid var(--border); border-radius: 13px; background: var(--surface); }
+    .tab { flex: 1; padding: 10px 12px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-weight: 750; cursor: pointer; }
+    .tab.active { background: var(--accent); color: var(--accent-text); }
+    .hidden { display: none !important; }
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(24, 24, 22, 0.32);
+      backdrop-filter: blur(2px);
+    }
+    .loading-panel {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 750;
+      box-shadow: var(--shadow);
+    }
+    .loading-spinner {
+      width: 22px;
+      height: 22px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: loading-spin 0.8s linear infinite;
+    }
+    @keyframes loading-spin { to { transform: rotate(360deg); } }
+    .toast {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 5100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      min-width: min(400px, calc(100vw - 32px));
+      max-width: calc(100vw - 32px);
+      padding: 22px 28px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--accent);
+      color: var(--accent-text);
+      font-size: clamp(20px, 4vw, 25px);
+      font-weight: 800;
+      text-align: center;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, calc(-50% + 12px)) scale(0.96);
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+    .toast.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    .toast.fullscreen {
+      inset: 0;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      max-width: none;
+      padding: 24px;
+      border: 0;
+      border-radius: 0;
+      background: rgba(24, 24, 22, .82);
+      color: var(--accent-text);
+      backdrop-filter: blur(5px);
+      transform: none;
+    }
+    .toast.fullscreen span {
+      width: min(100%, 600px);
+      padding: clamp(28px, 7vw, 56px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: var(--accent);
+      color: var(--accent-text);
+      font-size: clamp(28px, 7vw, 48px);
+      font-weight: 850;
+      line-height: 1.2;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, .35);
+    }
+    .toast.fullscreen.visible { transform: none; }
+    .confirmation-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 4000;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(15, 15, 14, 0.78);
+      backdrop-filter: blur(4px);
+    }
+    .confirmation-panel {
+      width: min(100%, 460px);
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+    .confirmation-title { margin: 0 0 10px; font-size: 20px; line-height: 1.35; }
+    .confirmation-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .btn-danger { border-color: var(--danger); background: var(--danger); color: #fff; }
+    .msg { min-height: 20px; margin-top: 10px; font-size: 13px; font-weight: 700; }
+    .msg:empty { display: none; }
+    .err { color: var(--danger); }
+    .ok { color: var(--success); }
+    .field-error { display: block; margin-top: 5px; color: var(--danger); font-size: 12px; font-weight: 700; line-height: 1.4; }
+    .field-error:empty { display: none; }
+    .customer { margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--soft); }
+    .customer h3 { margin: 0 0 5px; font-size: 17px; }
+    .customer p { margin: 4px 0; color: var(--muted); }
+    .customer .customer-total-spent { color: var(--text); font-size: 18px; font-weight: 800; margin: 8px 0; }
+    .customer .customer-bonus-balance { color: var(--bonus-gold); font-weight: 700; }
+    .stamp-count { margin: 14px 0; font-size: 26px; font-weight: 850; }
+    .stamp-lock-hint { display: block; margin-top: 8px; color: var(--muted); font-size: 14px; font-weight: 700; }
+    .stamp-lock-hint:empty { display: none; }
+    .actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .actions + #bonusRedeemPanel { margin-top: 14px; }
+    .danger-zone { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .danger-zone summary { color: var(--muted); font-size: 12px; font-weight: 650; cursor: pointer; }
+    .btn-danger-secondary { margin-top: 10px; border-color: rgba(163, 61, 50, 0.35); color: var(--danger); opacity: 0.72; }
+    .btn-danger-secondary:hover { opacity: 1; }
+    #reader { width: 100%; overflow: hidden; border-radius: 14px; }
+    #reader video { border-radius: 12px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th { color: var(--muted); font-size: 11px; }
+    #adminPanel { padding: 22px; border-radius: 20px; }
+    #adminPanel .title { font-size: 18px; }
+    #adminPanel .sub { font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+    #adminPanel label { margin-bottom: 6px; font-size: 12px; }
+    #adminPanel .input { min-height: 42px; padding: 10px 12px; font-size: 15px; }
+    #adminPanel #menuInput { min-height: 160px; }
+    #adminPanel .btn { padding: 11px 15px; font-size: 14px; }
+    #adminPanel .field-error { font-size: 12px; }
+    #settingsForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+    #settingsForm .field { margin-bottom: 14px; }
+    #settingsForm .settings-menu-field,
+    #settingsForm #saveSettingsBtn { grid-column: 1 / -1; }
+    #adminPanel .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+    #adminPanel table { font-size: 13px; }
+    #adminPanel th, #adminPanel td { padding: 10px 12px; }
+    #adminPanel th { font-size: 11px; }
+    .customer-search-field { max-width: 420px; margin: 14px 0 12px; }
+    @media (max-width: 520px) {
+      body { padding: 16px 12px 34px; }
+      .card { padding: 17px; }
+      .app.admin-expanded { width: 100%; }
+      #adminPanel .input { font-size: 16px; }
+      #settingsForm { grid-template-columns: 1fr; }
+      #settingsForm .settings-menu-field,
+      #settingsForm #saveSettingsBtn { grid-column: 1; }
+      .topbar { align-items: flex-start; }
+      .actions { grid-template-columns: 1fr; }
+      .tabs { gap: 4px; }
+      .tab { padding: 9px 5px; font-size: 12px; }
+    }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--muted); outline-offset: 3px; }
+  </style>
+<style>#nl-badge,.nl-badge,#nl-card,.nl-card{display:none!important}</style>
+</head>
+<body class="light-mode">
+  <div id="loadingOverlay" class="loading-overlay hidden" role="status" aria-live="polite" aria-label="Yüklənir">
+    <div class="loading-panel">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span>Yüklənir...</span>
+    </div>
+  </div>
+  <section id="invalidRestaurantLink" class="card slug-error hidden" role="alert">
+    <h1 class="title">Restoran linki tələb olunur</h1>
+    <p class="sub">Səhifəyə daxil olmaq üçün restoranın linkində ?slug=restoran-kodu olmalıdır.</p>
+  </section>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <strong>Daimi</strong>
+        <span>PERSONEL VƏ ADMIN</span>
+      </div>
+      <div class="top-actions">
+        <div class="theme-switch" role="group" aria-label="Dil seçimi">
+          <button type="button" class="theme-btn active" data-language="az" aria-pressed="true">AZ</button>
+          <button type="button" class="theme-btn" data-language="ru" aria-pressed="false">RU</button>
+          <button type="button" class="theme-btn" data-language="en" aria-pressed="false">EN</button>
+        </div>
+        <div class="theme-switch" role="group" aria-label="Tema seçimi">
+          <button id="lightThemeBtn" type="button" class="theme-btn active" aria-pressed="true">İşıqlı</button>
+          <button id="darkThemeBtn" type="button" class="theme-btn" aria-pressed="false">Qaranlıq</button>
+        </div>
+        <a id="customerPageLink" class="btn" href="index.html">Müştəri səhifəsi</a>
+      </div>
+    </header>
+
+    <section id="pinScreen" class="card">
+      <h1 class="title">Personel panelinə giriş</h1>
+      <p class="sub">Davam etmək üçün restoranın 4 rəqəmli personel PİN kodunu daxil edin.</p>
+      <form id="pinForm">
+        <div class="field">
+          <label for="pinInput">Personel PİN kodu</label>
+          <input id="pinInput" class="input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" required />
+        </div>
+        <button id="pinBtn" class="btn btn-primary" type="submit">Daxil ol</button>
+      </form>
+      <div id="pinMsg" class="msg err" role="status"></div>
+    </section>
+
+    <main id="workspace" class="hidden">
+      <nav class="tabs" aria-label="Panel bölmələri">
+        <button class="tab active" data-panel="cashierPanel" type="button">Personel skaneri</button>
+        <button class="tab" data-panel="adminPanel" type="button">Admin paneli</button>
+      </nav>
+
+      <section id="cashierPanel" class="card">
+        <h1 class="title">Personel skaner paneli</h1>
+        <p class="sub">Müştərinin QR kodunu kameraya göstərin. Kamera icazəsi üçün sayt HTTPS üzərindən açılmalıdır.</p>
+        <div id="scannerMsg" class="msg" role="status"></div>
+        <div id="reader" class="hidden"></div>
+        <div id="scannedCustomer" class="customer hidden">
+          <h3 id="customerName"></h3>
+          <p id="customerPhone"></p>
+          <p id="customerId"></p>
+          <div id="stampCount" class="stamp-count"></div>
+          <p id="customerTotalSpent" class="customer-total-spent"></p>
+          <div id="customerBonusBalance" class="stamp-count customer-bonus-balance"></div>
+          <div class="field">
+            <label for="amountInput">Yeməyin məbləği (AZN)</label>
+            <input id="amountInput" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="məs: 25.00" />
+          </div>
+          <div id="stampActions" class="actions">
+            <button id="addStampBtn" class="btn btn-primary" type="button" aria-describedby="stampLockHint">+ Möhür əlavə et</button>
+            <small id="stampLockHint" class="stamp-lock-hint" role="status" aria-live="polite"></small>
+          </div>
+          <section id="bonusRedeemPanel" class="field hidden">
+            <button id="openBonusRedeemBtn" class="btn btn-primary" type="button">Bonus istifadə et</button>
+            <small id="bonusRedeemHint"></small>
+          </section>
+          <button id="scanNextBtn" class="btn" type="button" style="width:100%;margin-top:10px">Başqa müştərini skan et</button>
+          <div id="operationMsg" class="msg" role="status"></div>
+          <details class="danger-zone">
+            <summary>Təhlükəli əməliyyatlar</summary>
+            <button id="removeStampBtn" class="btn btn-danger-secondary" type="button">− Möhür sil</button>
+          </details>
+        </div>
+      </section>
+
+      <section id="adminPanel" class="card hidden">
+        <div id="adminLogin">
+          <h1 class="title">Admin panelinə giriş</h1>
+          <p class="sub">Restoranın admin kodu ilə menyu, tənzimləmələr və müştəriləri idarə edin.</p>
+          <form id="adminLoginForm">
+            <div class="field">
+              <label for="adminCodeInput">Admin giriş kodu</label>
+              <input id="adminCodeInput" class="input" type="password" autocomplete="current-password" required />
+            </div>
+            <button id="adminLoginBtn" class="btn btn-primary" type="submit">Admin panelini aç</button>
+          </form>
+          <div id="adminLoginMsg" class="msg err" role="status"></div>
+        </div>
+        <div id="adminContent" class="hidden">
+          <div class="panel-head">
+            <div>
+              <h1 id="adminRestName" class="title">Restoran ayarları</h1>
+              <p id="adminSlug" class="sub"></p>
+            </div>
+            <button id="adminLogoutBtn" class="btn" type="button">Admin çıxışı</button>
+          </div>
+          <form id="settingsForm" novalidate>
+            <div class="field">
+              <label for="stampGoalInput">Möhür sayı (hədəf, 1–20)</label>
+              <input id="stampGoalInput" class="input" type="number" min="1" max="20" required aria-describedby="stampGoalInputError" />
+              <small id="stampGoalInputError" class="field-error" role="alert"></small>
+            </div>
+            <div class="field">
+              <label for="cashierPinInput">Personel PİN kodu (dəyişmək üçün yeni 4 rəqəm daxil edin)</label>
+              <input id="cashierPinInput" class="input" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" aria-describedby="cashierPinInputError" />
+              <small id="cashierPinInputError" class="field-error" role="alert"></small>
+            </div>
+            <div class="field">
+              <label for="bonusModeInput">Bonus rejimi</label>
+              <select id="bonusModeInput" class="input" aria-describedby="bonusModeInputError">
+                <option value="fixed">Sabit məbləğ (AZN)</option>
+                <option value="percent">Faiz (%)</option>
+              </select>
+              <small id="bonusModeInputError" class="field-error" role="alert"></small>
+            </div>
+            <div class="field">
+              <label id="bonusValueLabel" for="bonusValueInput">Bonus məbləği (AZN)</label>
+              <input id="bonusValueInput" class="input" type="number" min="0" step="0.01" required aria-describedby="bonusValueInputError" />
+              <small id="bonusValueInputError" class="field-error" role="alert"></small>
+            </div>
+            <div class="field">
+              <label for="rewardTextInput">Bonus banner mətni</label>
+              <input id="rewardTextInput" class="input" type="text" maxlength="80" aria-describedby="rewardTextInputError" />
+              <small id="rewardTextInputError" class="field-error" role="alert"></small>
+            </div>
+            <div class="field">
+              <label for="restaurantNameInput">Restoran adı</label>
+              <input id="restaurantNameInput" class="input" type="text" minlength="2" maxlength="200" required aria-describedby="restaurantNameInputError" />
+              <small id="restaurantNameInputError" class="field-error" role="alert"></small>
+            </div>
+            <div class="field">
+              <label for="aboutInput">Restoran haqqında</label>
+              <textarea id="aboutInput" class="input" minlength="2" maxlength="10000" aria-describedby="aboutInputError"></textarea>
+              <small id="aboutInputError" class="field-error" role="alert"></small>
+            </div>
+            <div class="field">
+              <label for="addressInput">Ünvan</label>
+              <input id="addressInput" class="input" type="text" minlength="2" maxlength="1000" required aria-describedby="addressInputError" />
+              <small id="addressInputError" class="field-error" role="alert"></small>
+            </div>
+            <div class="field">
+              <label for="restaurantPhoneInput">Əlaqə nömrəsi</label>
+              <input id="restaurantPhoneInput" class="input" type="text" maxlength="50" aria-describedby="restaurantPhoneInputError" />
+              <small id="restaurantPhoneInputError" class="field-error" role="alert"></small>
+            </div>
+            <div class="field">
+              <label for="instagramInput">Instagram</label>
+              <input id="instagramInput" class="input" type="text" maxlength="255" aria-describedby="instagramInputError" />
+              <small id="instagramInputError" class="field-error" role="alert"></small>
+            </div>
+            <div class="field settings-menu-field">
+              <label for="menuInput">Rəqəmsal menyu (JSON)</label>
+              <textarea id="menuInput" class="input" spellcheck="false" placeholder='[{"name":"Yemək","price":12}]'></textarea>
+              <small id="menuInputError" class="field-error" role="alert"></small>
+            </div>
+            <button id="saveSettingsBtn" class="btn btn-primary" type="submit">Dəyişiklikləri yadda saxla</button>
+          </form>
+          <div id="settingsMsg" class="msg" role="status"></div>
+
+          <hr style="border:0;border-top:1px solid var(--border);margin:24px 0" />
+          <h2 class="title">Müştəri siyahısı</h2>
+          <p class="sub">Son 500 qeydiyyatdan keçmiş müştəri və onların cari kart balansı.</p>
+          <div class="field customer-search-field">
+            <label for="customerSearchInput">Müştərilərdə axtar</label>
+            <input id="customerSearchInput" class="input" type="search" autocomplete="off" placeholder="Ad, hesab adı və ya telefonla axtar" />
+          </div>
+          <div id="customerListMsg" class="msg"></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Hesab adı</th><th>Telefon</th><th>Möhür</th><th>Bonus</th><th>Qeydiyyat</th></tr></thead>
+              <tbody id="customerRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="operationToast" class="toast" role="status" aria-live="polite" aria-atomic="true">
+    <span id="operationToastText"></span>
+  </div>
+  <div id="removeStampDialog" class="confirmation-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="removeStampTitle">
+    <section class="confirmation-panel">
+      <h2 id="removeStampTitle" class="confirmation-title">Möhür silmək istədiyinizdən əminsinizmi?</h2>
+      <p id="pinActionDescription" class="sub">Davam etmək üçün personel PİN kodunu daxil edin.</p>
+      <form id="removeStampForm">
+        <div class="field">
+          <label for="removeStampPinInput">Personel PİN kodu</label>
+          <input id="removeStampPinInput" class="input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" required />
+        </div>
+        <div id="removeStampMsg" class="msg" role="status" aria-live="polite"></div>
+        <div class="confirmation-actions">
+          <button id="cancelRemoveStampBtn" class="btn" type="button">Ləğv et</button>
+          <button id="confirmRemoveStampBtn" class="btn btn-danger" type="submit">Davam et</button>
+        </div>
+      </form>
+    </section>
+  </div>
+  <div id="bonusRedeemDialog" class="confirmation-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="bonusRedeemTitle">
+    <section class="confirmation-panel">
+      <h2 id="bonusRedeemTitle" class="confirmation-title">Bonus istifadə et</h2>
+      <form id="bonusRedeemForm">
+        <div class="field">
+          <label for="bonusRedeemAmountInput">Nə qədər manat bonus işlətmək istəyirsiniz?</label>
+          <input id="bonusRedeemAmountInput" class="input" type="number" min="0" step="0.01" inputmode="decimal" required />
+          <small id="bonusRedeemAvailable"></small>
+          <small class="stamp-lock-hint">(Müştəri istəsə 0 manat bonus istifadə edə bilər)</small>
+        </div>
+        <div id="bonusRedeemMsg" class="msg" role="status" aria-live="polite"></div>
+        <div class="confirmation-actions">
+          <button id="cancelBonusRedeemBtn" class="btn" type="button">Ləğv et</button>
+          <button id="confirmBonusRedeemBtn" class="btn btn-primary" type="submit">Davam et</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script src="translations.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    (function () {
+      const requestedSlug = new URLSearchParams(window.location.search).get('slug');
+      const slug = typeof requestedSlug === 'string' ? requestedSlug.trim().toLowerCase() : '';
+      if (!/^[a-z0-9-]{1,80}$/.test(slug)) {
+        document.querySelector('.app').classList.add('hidden');
+        document.getElementById('invalidRestaurantLink').classList.remove('hidden');
+        return;
+      }
+      const pinScreen = document.getElementById('pinScreen');
+      const workspace = document.getElementById('workspace');
+      const app = document.querySelector('.app');
+      const customerSearchInput = document.getElementById('customerSearchInput');
+      const pinForm = document.getElementById('pinForm');
+      const pinInput = document.getElementById('pinInput');
+      const pinBtn = document.getElementById('pinBtn');
+      const pinMsg = document.getElementById('pinMsg');
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      const operationToast = document.getElementById('operationToast');
+      const operationToastText = document.getElementById('operationToastText');
+      const removeStampDialog = document.getElementById('removeStampDialog');
+      const removeStampForm = document.getElementById('removeStampForm');
+      const removeStampPinInput = document.getElementById('removeStampPinInput');
+      const removeStampMsg = document.getElementById('removeStampMsg');
+      const confirmRemoveStampBtn = document.getElementById('confirmRemoveStampBtn');
+      const removeStampTitle = document.getElementById('removeStampTitle');
+      const pinActionDescription = document.getElementById('pinActionDescription');
+      const addStampBtn = document.getElementById('addStampBtn');
+      const stampLockHint = document.getElementById('stampLockHint');
+      const t = (text, replacements) => window.DaimiI18n.t(text, replacements);
+      const formatSlug = value => {
+        const clean = String(value || '').trim().replace(/^\/+/, '');
+        return clean ? `/${clean}` : '';
+      };
+      pinScreen.classList.remove('hidden');
+      workspace.classList.add('hidden');
+      let cashierPin = '';
+      let restaurant = null;
+      let selectedCustomer = null;
+      let scanner = null;
+      let scannerStartPromise = null;
+      let scannerGeneration = 0;
+      let scanLookupInProgress = false;
+      let pendingLoadingRequests = 0;
+      let loadingDelay = null;
+      let toastTimer = null;
+      const clearedScanners = new WeakSet();
+      let adminCode = '';
+      let lastScannedCard = null;
+      let stampSubmissionInProgress = false;
+      document.getElementById('customerPageLink').href = `index.html?slug=${encodeURIComponent(slug)}`;
+
+      const applyTheme = mode => {
+        const isLight = mode !== 'dark';
+        document.body.classList.toggle('light-mode', isLight);
+        document.getElementById('lightThemeBtn').classList.toggle('active', isLight);
+        document.getElementById('darkThemeBtn').classList.toggle('active', !isLight);
+        document.getElementById('lightThemeBtn').setAttribute('aria-pressed', String(isLight));
+        document.getElementById('darkThemeBtn').setAttribute('aria-pressed', String(!isLight));
+      };
+      document.getElementById('lightThemeBtn').addEventListener('click', () => applyTheme('light'));
+      document.getElementById('darkThemeBtn').addEventListener('click', () => applyTheme('dark'));
+      applyTheme('light');
+
+      window.addEventListener('daimi-language-change', () => {
+        updatePinActionText();
+        document.getElementById('bonusValueLabel').textContent =
+          document.getElementById('bonusModeInput').value === 'percent'
+            ? t('Bonus faizi (%)')
+            : t('Bonus məbləği (AZN)');
+        document.getElementById('adminSlug').textContent = t('Restoran kodu: {{slug}}', { slug: formatSlug(slug) });
+        document.querySelectorAll('.msg').forEach(element => {
+          if (element.textContent) element.textContent = t(element.textContent);
+        });
+        if (operationToastText.textContent) operationToastText.textContent = t(operationToastText.textContent);
+        if (selectedCustomer && lastScannedCard) {
+          renderScannedCustomer(lastScannedCard, false);
+        }
+        document.querySelectorAll('#customerRows tr').forEach(row => {
+          const amount = row.dataset.bonusCycle;
+          const carryover = row.dataset.bonusCarryover;
+          if (amount !== undefined && carryover !== undefined) {
+            row.children[3].textContent = t(
+              '{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)',
+              { amount, carryover }
+            );
+          }
+        });
+        filterCustomerRows();
+      });
+
+      async function requestJson(url, options) {
+        pendingLoadingRequests += 1;
+        if (pendingLoadingRequests === 1) {
+          loadingDelay = window.setTimeout(() => {
+            if (pendingLoadingRequests > 0) loadingOverlay.classList.remove('hidden');
+            loadingDelay = null;
+          }, 120);
+        }
+        try {
+          if (window.location.protocol === 'file:') {
+            throw new Error(t('Səhifəni birbaşa fayl kimi açmaq olmaz. Veb server üzərindən açın.'));
+          }
+          const endpoint = String(url).split('?')[0];
+          let response;
+          try {
+            response = await fetch(url, options);
+          } catch (error) {
+            console.error('Personel API sorğusu cavab almadan uğursuz oldu:', {
+              endpoint,
+              message: error.message || 'Şəbəkə xətası.'
+            });
+            throw error;
+          }
+          const responseText = await response.text();
+          let data = {};
+          if (responseText) {
+            try {
+              const parsed = JSON.parse(responseText);
+              data = parsed && typeof parsed === 'object'
+                ? parsed
+                : { error: typeof parsed === 'string' ? parsed : '' };
+            } catch {
+              const isHtmlResponse = /<(!doctype|html)\b/i.test(responseText);
+              data = {
+                error: isHtmlResponse
+                  ? t('Server xətası (HTTP {{status}})', { status: response.status })
+                  : responseText.slice(0, 300)
+              };
+            }
+          }
+          if (!response.ok) {
+            const detail = data.error || response.statusText || 'Sorğu uğursuz oldu.';
+            console.error('Personel API sorğusu uğursuz oldu:', {
+              endpoint,
+              status: response.status,
+              code: data.code || null,
+              message: detail
+            });
+            let message = data.code === 'RATE_LIMIT_UNAVAILABLE' &&
+              data.error === 'Xidmət müvəqqəti əlçatan deyil.'
+              ? t('Təhlükəsizlik xidməti hazır deyil. Supabase mühit dəyişənlərini yoxlayın və tələb olunan SQL migration-ı tətbiq edin.')
+              : t(detail);
+            if (response.status >= 500 && !String(message).includes(String(response.status))) {
+              message = `${message} (HTTP ${response.status}${data.code ? `, ${data.code}` : ''})`;
+            }
+            const error = new Error(message);
+            error.status = response.status;
+            error.code = data.code;
+            error.field = data.field;
+            throw error;
+          }
+          return data;
+        } finally {
+          pendingLoadingRequests = Math.max(0, pendingLoadingRequests - 1);
+          if (pendingLoadingRequests === 0) {
+            if (loadingDelay !== null) {
+              window.clearTimeout(loadingDelay);
+              loadingDelay = null;
+            }
+            loadingOverlay.classList.add('hidden');
+          }
+        }
+      }
+
+      function showMessage(element, message, error) {
+        element.textContent = t(message);
+        element.className = `msg${message ? (error ? ' err' : ' ok') : ''}`;
+      }
+
+      const settingsFieldIds = new Set([
+        'stampGoalInput',
+        'cashierPinInput',
+        'bonusModeInput',
+        'bonusValueInput',
+        'rewardTextInput',
+        'restaurantNameInput',
+        'aboutInput',
+        'addressInput',
+        'restaurantPhoneInput',
+        'instagramInput',
+        'menuInput'
+      ]);
+
+      function clearSettingsFieldErrors() {
+        document.querySelectorAll('#settingsForm .field-error').forEach(element => {
+          element.textContent = '';
+        });
+        settingsFieldIds.forEach(id => document.getElementById(id).removeAttribute('aria-invalid'));
+      }
+
+      function showSettingsFieldError(field, message) {
+        if (!settingsFieldIds.has(field)) return false;
+        const input = document.getElementById(field);
+        const errorElement = document.getElementById(`${field}Error`);
+        if (!input || !errorElement) return false;
+        input.setAttribute('aria-invalid', 'true');
+        errorElement.textContent = message;
+        return true;
+      }
+
+      function validateSettingsFields() {
+        let valid = true;
+        const setError = (field, message, replacements) => {
+          showSettingsFieldError(field, t(message, replacements));
+          valid = false;
+        };
+        const textFields = [
+          { field: 'restaurantNameInput', minimum: 2, maximum: 200 },
+          { field: 'aboutInput', minimum: 2, maximum: 10000, optional: true },
+          { field: 'addressInput', minimum: 2, maximum: 1000 },
+          { field: 'rewardTextInput', maximum: 80, optional: true },
+          { field: 'restaurantPhoneInput', maximum: 50, optional: true },
+          { field: 'instagramInput', maximum: 255, optional: true }
+        ];
+        textFields.forEach(({ field, minimum = 0, maximum, optional = false }) => {
+          const value = document.getElementById(field).value.trim();
+          const length = Array.from(value).length;
+          if (optional && length === 0) return;
+          if (length < minimum) {
+            setError(
+              field,
+              optional
+                ? 'Boş ola bilər və ya minimum {{minimum}} simvol olmalıdır.'
+                : 'Minimum {{minimum}} simvol olmalıdır.',
+              { minimum }
+            );
+          } else if (length > maximum) {
+            setError(field, 'Maksimum {{maximum}} simvol ola bilər.', { maximum });
+          }
+        });
+
+        const stampGoal = Number(document.getElementById('stampGoalInput').value);
+        if (!Number.isInteger(stampGoal) || stampGoal < 1 || stampGoal > 20) {
+          setError('stampGoalInput', 'Möhür sayı 1-20 arası tam ədəd olmalıdır.');
+        }
+
+        const newPin = document.getElementById('cashierPinInput').value.trim();
+        if (newPin && !/^\d{4}$/.test(newPin)) {
+          setError('cashierPinInput', 'Personel PİN kodu 4 rəqəm olmalıdır.');
+        }
+
+        const bonusMode = document.getElementById('bonusModeInput').value;
+        if (bonusMode !== 'fixed' && bonusMode !== 'percent') {
+          setError('bonusModeInput', 'Bonus rejimi düzgün seçilməyib.');
+        }
+        const bonusValueText = document.getElementById('bonusValueInput').value.trim();
+        const bonusValue = Number(bonusValueText);
+        if (
+          !bonusValueText ||
+          !Number.isFinite(bonusValue) ||
+          bonusValue < 0 ||
+          Math.round(bonusValue * 100) !== bonusValue * 100 ||
+          (bonusMode === 'percent' && bonusValue > 100) ||
+          (bonusMode === 'fixed' && bonusValue > 99999999.99)
+        ) {
+          setError(
+            'bonusValueInput',
+            bonusMode === 'percent'
+              ? 'Bonus faizi 0-100 arası olmalıdır.'
+              : 'Bonus dəyərini düzgün daxil edin.'
+          );
+        }
+        return valid;
+      }
+
+      function showToast(message) {
+        operationToastText.textContent = t(message);
+        operationToast.classList.toggle('fullscreen', message === 'Möhür əlavə edildi');
+        operationToast.classList.add('visible');
+        if (toastTimer !== null) window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => {
+          operationToast.classList.remove('visible');
+          operationToastText.textContent = '';
+          toastTimer = null;
+        }, 2800);
+      }
+
+      function openRemoveStampDialog() {
+        updatePinActionText();
+        removeStampForm.reset();
+        showMessage(removeStampMsg, '', false);
+        removeStampDialog.classList.remove('hidden');
+        window.setTimeout(() => removeStampPinInput.focus(), 0);
+      }
+
+      function closeRemoveStampDialog() {
+        removeStampDialog.classList.add('hidden');
+        removeStampForm.reset();
+        showMessage(removeStampMsg, '', false);
+        document.getElementById('removeStampBtn').focus();
+      }
+
+      function updatePinActionText() {
+        removeStampTitle.textContent = t('Möhür silmək istədiyinizdən əminsinizmi?');
+        pinActionDescription.textContent = t('Davam etmək üçün personel PİN kodunu daxil edin.');
+        confirmRemoveStampBtn.textContent = t('Davam et');
+      }
+
+      function openBonusRedeemDialog() {
+        const form = document.getElementById('bonusRedeemForm');
+        form.reset();
+        showMessage(document.getElementById('bonusRedeemMsg'), '', false);
+        document.getElementById('bonusRedeemDialog').classList.remove('hidden');
+        window.setTimeout(() => document.getElementById('bonusRedeemAmountInput').focus(), 0);
+      }
+
+      function closeBonusRedeemDialog() {
+        document.getElementById('bonusRedeemDialog').classList.add('hidden');
+        document.getElementById('bonusRedeemForm').reset();
+        showMessage(document.getElementById('bonusRedeemMsg'), '', false);
+        document.getElementById('openBonusRedeemBtn').focus();
+      }
+
+      pinInput.addEventListener('input', () => { pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4); });
+      pinForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        showMessage(pinMsg, '', false);
+        pinBtn.disabled = true;
+        try {
+          const enteredPin = pinInput.value.trim();
+          const data = await requestJson('/.netlify/functions/cashier-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug, pin: enteredPin })
+          });
+          cashierPin = enteredPin;
+          restaurant = data.restaurant;
+          pinScreen.classList.add('hidden');
+          workspace.classList.remove('hidden');
+          document.getElementById('adminRestName').textContent = restaurant.name || 'Restoran ayarları';
+          document.getElementById('adminSlug').textContent = t('Restoran kodu: {{slug}}', { slug: formatSlug(slug) });
+          await startScanner();
+        } catch (error) {
+          showMessage(pinMsg, error.message || 'Serverlə əlaqə alınmadı.', true);
+        } finally {
+          pinBtn.disabled = false;
+        }
+      });
+
+      document.querySelectorAll('.tab').forEach(button => {
+        button.addEventListener('click', async () => {
+          document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button));
+          document.getElementById('cashierPanel').classList.toggle('hidden', button.dataset.panel !== 'cashierPanel');
+          document.getElementById('adminPanel').classList.toggle('hidden', button.dataset.panel !== 'adminPanel');
+          app.classList.toggle('admin-expanded', button.dataset.panel === 'adminPanel');
+          if (button.dataset.panel === 'cashierPanel') {
+            selectedCustomer = null;
+            if (scannerStartPromise) await scannerStartPromise;
+            if (!scanner || !scanner.isScanning) await startScanner();
+          } else {
+            await stopScanner();
+          }
+        });
+      });
+
+      async function stopScanner() {
+        scannerGeneration += 1;
+        const currentScanner = scanner;
+        scanner = null;
+        if (currentScanner) {
+          if (currentScanner.isScanning || !scannerStartPromise) await disposeScanner(currentScanner);
+        }
+        document.getElementById('reader').classList.add('hidden');
+      }
+
+      async function disposeScanner(scannerInstance) {
+        if (clearedScanners.has(scannerInstance)) return;
+        if (scannerInstance.isScanning) await scannerInstance.stop();
+        await scannerInstance.clear();
+        clearedScanners.add(scannerInstance);
+      }
+
+      async function lookupCustomer(customerId) {
+        showMessage(document.getElementById('scannerMsg'), 'Müştəri kartı yoxlanılır...', false);
+        const data = await requestJson('/.netlify/functions/cashier-customer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug, pin: cashierPin, customer_id: customerId })
+        });
+        selectedCustomer = data.customer;
+        renderScannedCustomer(data.card);
+        showMessage(document.getElementById('scannerMsg'), '', false);
+      }
+
+      function getBonusRedemptionAmounts(card) {
+        const rawCycle = card?.bonus_cycle_balance;
+        const cardBonus = rawCycle !== undefined && rawCycle !== null
+          ? Number(rawCycle)
+          : Number(card?.bonus_balance ?? 0);
+        const carryoverValue = Number(card?.bonus_carryover || 0);
+        const currentBonus = Number.isFinite(cardBonus) ? Math.max(0, cardBonus) : 0;
+        const carryoverBonus = Number.isFinite(carryoverValue) ? Math.max(0, carryoverValue) : 0;
+        const maxRedeemable = Number((currentBonus + carryoverBonus).toFixed(2));
+        return { currentBonus, carryoverBonus, maxRedeemable };
+      }
+
+      function isRewardReady(card) {
+        const stamps = Number(card?.stamps_count || 0);
+        const goal = Math.max(Number(restaurant?.stamp_goal || 5), 1);
+        return card?.reward_unlocked === true || (Number.isFinite(stamps) && stamps >= goal);
+      }
+
+      function updateCustomerActionButtons(card) {
+        const rewardReady = isRewardReady(card);
+        const isLocked = stampSubmissionInProgress;
+        addStampBtn.disabled = isLocked || rewardReady;
+        addStampBtn.setAttribute('aria-disabled', String(addStampBtn.disabled));
+        document.getElementById('amountInput').disabled = isLocked || rewardReady;
+        document.getElementById('openBonusRedeemBtn').disabled = isLocked || !rewardReady;
+        document.getElementById('removeStampBtn').disabled = isLocked;
+        document.getElementById('scanNextBtn').disabled = isLocked;
+      }
+
+      function renderScannedCustomer(card, resetInputs = true) {
+        lastScannedCard = card;
+        document.getElementById('customerName').textContent =
+          selectedCustomer.account_name || [selectedCustomer.first_name, selectedCustomer.last_name].filter(Boolean).join(' ');
+        const phoneElement = document.getElementById('customerPhone');
+        phoneElement.textContent = selectedCustomer.phone ? t('Telefon: {{phone}}', { phone: selectedCustomer.phone }) : '';
+        phoneElement.classList.toggle('hidden', !selectedCustomer.phone);
+        document.getElementById('customerId').textContent = t('ID: {{id}}', { id: selectedCustomer.id });
+        const stamps = Number(card.stamps_count || 0);
+        const goal = Number(restaurant.stamp_goal || 5);
+        document.getElementById('stampCount').textContent = t('{{current}} / {{goal}} möhür', {
+          current: stamps,
+          goal
+        });
+        document.getElementById('customerTotalSpent').textContent = t('Toplam ödənilən hesab: {{amount}} AZN', {
+          amount: Number(card.total_spent || 0).toFixed(2)
+        });
+        const { currentBonus, carryoverBonus, maxRedeemable } = getBonusRedemptionAmounts(card);
+        document.getElementById('customerBonusBalance').textContent = t(
+          '{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)',
+          { amount: currentBonus.toFixed(2), carryover: carryoverBonus.toFixed(2) }
+        );
+        const bonusPanel = document.getElementById('bonusRedeemPanel');
+        const redeemInput = document.getElementById('bonusRedeemAmountInput');
+        const hasBonus = maxRedeemable > 0;
+        const rewardReady = isRewardReady(card);
+        const limitMessage = carryoverBonus > 0
+          ? 'Ümumi istifadə limiti: {{amount}} AZN'
+          : 'Mövcud bonus: {{amount}} AZN';
+        bonusPanel.classList.toggle('hidden', !hasBonus && !rewardReady);
+        redeemInput.max = maxRedeemable.toFixed(2);
+        document.getElementById('bonusRedeemAvailable').textContent = (hasBonus || rewardReady)
+          ? t(limitMessage, { amount: maxRedeemable.toFixed(2) })
+          : '';
+        stampLockHint.textContent = rewardReady
+          ? t('Möhür hədəfi tamamlanıb. Bonus istifadə edin.')
+          : '';
+        document.getElementById('bonusRedeemHint').textContent = !rewardReady && hasBonus
+          ? t('Bonus işlətmək üçün möhür hədəfi tamamlanmalıdır.')
+          : '';
+        updateCustomerActionButtons(card);
+        if (resetInputs) redeemInput.value = '';
+        document.getElementById('scannedCustomer').classList.remove('hidden');
+        if (resetInputs) {
+          document.getElementById('amountInput').value = '';
+          showMessage(document.getElementById('operationMsg'), '', false);
+        }
+      }
+
+      async function startScanner() {
+        if (scanner && scanner.isScanning) return;
+        if (scannerStartPromise) return scannerStartPromise;
+        const generation = ++scannerGeneration;
+        scannerStartPromise = (async () => {
+          const message = document.getElementById('scannerMsg');
+          if (typeof Html5Qrcode !== 'function') {
+            showMessage(message, 'QR skaner kitabxanası yüklənmədi. İnternet bağlantısını yoxlayın.', true);
+            return;
+          }
+          let scannerInstance = null;
+          try {
+            document.getElementById('scannedCustomer').classList.add('hidden');
+            document.getElementById('reader').classList.remove('hidden');
+            scannerInstance = new Html5Qrcode('reader');
+            scanner = scannerInstance;
+            await scannerInstance.start(
+              { facingMode: 'environment' },
+              { fps: 10, qrbox: { width: 240, height: 240 } },
+              async decodedText => {
+                if (generation !== scannerGeneration) return;
+                const id = decodedText.trim();
+                if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+                  showMessage(message, 'Bu QR kod Daimi müştəri kartına aid deyil.', true);
+                  return;
+                }
+                if (scanLookupInProgress) return;
+                scanLookupInProgress = true;
+                try {
+                  await stopScanner();
+                  await lookupCustomer(id);
+                } catch (error) {
+                  showMessage(message, error.message || 'Müştəri kartı tapılmadı.', true);
+                  await startScanner();
+                } finally {
+                  scanLookupInProgress = false;
+                }
+              },
+              () => {}
+            );
+            if (generation !== scannerGeneration) {
+              await disposeScanner(scannerInstance);
+              if (scanner === scannerInstance) scanner = null;
+              document.getElementById('reader').classList.add('hidden');
+            }
+          } catch (error) {
+            if (scanner === scannerInstance) scanner = null;
+            try {
+              if (scannerInstance) await disposeScanner(scannerInstance);
+            } catch (cleanupError) {
+              console.error('Skaner resursları təmizlənmədi:', cleanupError);
+            }
+            document.getElementById('reader').classList.add('hidden');
+            if (generation === scannerGeneration) {
+              showMessage(message, error.message || 'Kameranı başlatmaq mümkün olmadı.', true);
+            }
+          }
+        })();
+        try {
+          await scannerStartPromise;
+        } finally {
+          scannerStartPromise = null;
+        }
+      }
+
+      function notifyCustomerCardUpdated(customerId) {
+        const signal = { slug, customerId, updatedAt: Date.now() };
+        try {
+          if (typeof BroadcastChannel === 'function') {
+            const channel = new BroadcastChannel('daimi-loyalty-card-updates');
+            channel.postMessage(signal);
+            channel.close();
+          }
+        } catch (error) {
+          console.warn('BroadcastChannel siqnalı göndərilmədi:', error);
+        }
+        try {
+          localStorage.setItem('daimi_loyalty_card_update', JSON.stringify(signal));
+        } catch (error) {
+          console.warn('Kart yenilənmə siqnalı localStorage-ə yazılmadı:', error);
+        }
+      }
+
+      async function prepareForNextCustomer() {
+        selectedCustomer = null;
+        document.getElementById('scannedCustomer').classList.add('hidden');
+        showMessage(document.getElementById('scannerMsg'), '', false);
+        await startScanner();
+      }
+
+      async function submitStamp(stampDelta, pin = cashierPin, feedbackElement = null) {
+        if (!selectedCustomer || stampSubmissionInProgress) return false;
+        if (stampDelta === 1 && isRewardReady(lastScannedCard)) {
+          showMessage(feedbackElement || document.getElementById('operationMsg'), 'Möhür hədəfi tamamlanıb. Əvvəl bonusu istifadə edin.', true);
+          return false;
+        }
+        const customer = selectedCustomer;
+        const customerId = customer.id;
+        const amount = stampDelta === 1 ? Number(document.getElementById('amountInput').value) : 0;
+        const message = feedbackElement || document.getElementById('operationMsg');
+        if (stampDelta === 1 && (!Number.isFinite(amount) || amount <= 0)) {
+          showMessage(message, 'Yeməyin məbləğini düzgün daxil edin.', true);
+          return false;
+        }
+        stampSubmissionInProgress = true;
+        const buttons = [
+          document.getElementById('addStampBtn'),
+          document.getElementById('removeStampBtn'),
+          document.getElementById('scanNextBtn')
+        ];
+        buttons.forEach(button => { button.disabled = true; });
+        showMessage(message, '', false);
+        let writeCompleted = false;
+        try {
+          const payload = {
+            slug,
+            pin,
+            customer_id: customerId,
+            stamp_delta: stampDelta
+          };
+          if (stampDelta === 1) payload.amount = amount;
+          const result = await requestJson('/.netlify/functions/cashier-stamp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          writeCompleted = true;
+          if (!result.card) {
+            throw new Error('Möhür əməliyyatı tamamlandı, lakin cavabda yenilənmiş kart yoxdur.');
+          }
+          selectedCustomer = customer;
+          renderScannedCustomer(result.card);
+          notifyCustomerCardUpdated(customerId);
+          showMessage(message, '', false);
+          if (stampDelta > 0) {
+            showToast('Möhür əlavə edildi');
+            await prepareForNextCustomer();
+          } else {
+            showToast('Möhür silindi');
+          }
+          return true;
+        } catch (error) {
+          if (writeCompleted) {
+            console.error('Möhür bazada tamamlandı, amma personel ekranını yeniləmək alınmadı:', error);
+            notifyCustomerCardUpdated(customerId);
+            try {
+              await prepareForNextCustomer();
+            } catch (recoveryError) {
+              console.error('Yenilənməyən kartdan sonrakı skaner bərpası alınmadı:', recoveryError);
+            }
+            showMessage(
+              document.getElementById('scannerMsg'),
+              'Möhür bazada tamamlandı, amma kartı yeniləmək alınmadı. Müştərini yenidən skan edin.',
+              true
+            );
+            showToast(stampDelta > 0 ? 'Möhür əlavə edildi' : 'Möhür silindi');
+            return true;
+          }
+          showMessage(message, error.message || 'Əməliyyat tamamlanmadı.', true);
+          return false;
+        } finally {
+          stampSubmissionInProgress = false;
+          buttons.forEach(button => { button.disabled = false; });
+          if (lastScannedCard) updateCustomerActionButtons(lastScannedCard);
+        }
+      }
+      document.getElementById('addStampBtn').addEventListener('click', () => submitStamp(1));
+      document.getElementById('removeStampBtn').addEventListener('click', openRemoveStampDialog);
+      document.getElementById('cancelRemoveStampBtn').addEventListener('click', closeRemoveStampDialog);
+      removeStampForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const pin = removeStampPinInput.value.trim();
+        if (!/^\d{4}$/.test(pin)) {
+          showMessage(removeStampMsg, 'Personel PİN kodu 4 rəqəm olmalıdır.', true);
+          return;
+        }
+        confirmRemoveStampBtn.disabled = true;
+        try {
+          const completed = await submitStamp(-1, pin, removeStampMsg);
+          if (completed) closeRemoveStampDialog();
+        } finally {
+          confirmRemoveStampBtn.disabled = false;
+        }
+      });
+      document.getElementById('openBonusRedeemBtn').addEventListener('click', openBonusRedeemDialog);
+      document.getElementById('cancelBonusRedeemBtn').addEventListener('click', closeBonusRedeemDialog);
+      document.getElementById('bonusRedeemForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!selectedCustomer) return;
+        const input = document.getElementById('bonusRedeemAmountInput');
+        const rawAmount = input.value.trim().replace(',', '.');
+        const parsedAmount = rawAmount ? Number(rawAmount) : NaN;
+        const amount = Number.isFinite(parsedAmount) ? Math.round((parsedAmount + Number.EPSILON) * 100) / 100 : NaN;
+        const { maxRedeemable } = getBonusRedemptionAmounts(lastScannedCard);
+        const button = document.getElementById('confirmBonusRedeemBtn');
+        const message = document.getElementById('bonusRedeemMsg');
+        const operationMessage = document.getElementById('operationMsg');
+        if (!rawAmount || !Number.isFinite(amount) || amount < 0 || amount > maxRedeemable ||
+          Math.abs(parsedAmount - amount) > 0.00000001) {
+          showMessage(message, 'İstifadə ediləcək bonus məbləğini düzgün daxil edin.', true);
+          return;
+        }
+        button.disabled = true;
+        showMessage(message, '', false);
+        try {
+          const data = await requestJson('/.netlify/functions/redeem-bonus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              slug,
+              pin: cashierPin,
+              customer_id: selectedCustomer.id,
+              amount
+            })
+          });
+          if (!data || !data.card) {
+            throw new Error(data?.error || 'Bonus əməliyyatı tamamlanmadı.');
+          }
+          renderScannedCustomer(data.card);
+          notifyCustomerCardUpdated(selectedCustomer.id);
+          closeBonusRedeemDialog();
+          showMessage(operationMessage, 'Bonusu uğurla işlətdik.', false);
+          showToast('Bonusu uğurla işlətdik.');
+        } catch (error) {
+          showMessage(message, error.message || 'Bonus əməliyyatı tamamlanmadı.', true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+      document.getElementById('scanNextBtn').addEventListener('click', async () => {
+        await prepareForNextCustomer();
+      });
+
+      function fillSettings(data) {
+        document.getElementById('stampGoalInput').value = String(data.stamp_goal || 5);
+        document.getElementById('cashierPinInput').value = data.pin_code || '';
+        document.getElementById('bonusModeInput').value = data.bonus_mode === 'percent' ? 'percent' : 'fixed';
+        document.getElementById('bonusValueInput').value = document.getElementById('bonusModeInput').value === 'percent'
+          ? Number(data.bonus_percent ?? 10) : Number(data.bonus_fixed_amount ?? 10);
+        document.getElementById('bonusValueLabel').textContent = document.getElementById('bonusModeInput').value === 'percent'
+          ? t('Bonus faizi (%)') : t('Bonus məbləği (AZN)');
+        document.getElementById('rewardTextInput').value = data.reward_text || '';
+        document.getElementById('restaurantNameInput').value = data.name || '';
+        document.getElementById('aboutInput').value = data.about || '';
+        document.getElementById('addressInput').value = data.address || '';
+        document.getElementById('restaurantPhoneInput').value = data.phone || '';
+        document.getElementById('instagramInput').value = data.instagram || '';
+        document.getElementById('menuInput').value = JSON.stringify(data.menu_json || [], null, 2);
+      }
+      document.getElementById('bonusModeInput').addEventListener('change', event => {
+        document.getElementById('bonusValueLabel').textContent = event.target.value === 'percent'
+          ? t('Bonus faizi (%)') : t('Bonus məbləği (AZN)');
+      });
+
+      function filterCustomerRows() {
+        const message = document.getElementById('customerListMsg');
+        const rows = Array.from(document.querySelectorAll('#customerRows tr'));
+        const query = customerSearchInput.value.trim().toLocaleLowerCase();
+        let visibleCount = 0;
+        rows.forEach(row => {
+          const matches = row.textContent.toLocaleLowerCase().includes(query);
+          row.hidden = !matches;
+          if (matches) visibleCount += 1;
+        });
+
+        if (!rows.length) {
+          showMessage(message, 'Hələ müştəri yoxdur.', false);
+        } else if (query && visibleCount === 0) {
+          showMessage(message, 'Axtarışa uyğun müştəri tapılmadı.', false);
+        } else if (query) {
+          showMessage(message, t('{{shown}} / {{count}} müştəri göstərilir.', {
+            shown: visibleCount,
+            count: rows.length
+          }), false);
+        } else {
+          showMessage(message, t('{{count}} müştəri göstərilir.', { count: rows.length }), false);
+        }
+      }
+
+      customerSearchInput.addEventListener('input', filterCustomerRows);
+
+      async function loadCustomers() {
+        const message = document.getElementById('customerListMsg');
+        showMessage(message, 'Müştəri siyahısı yüklənir...', false);
+        try {
+          const data = await requestJson('/.netlify/functions/admin-customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug, accessCode: adminCode, pin: cashierPin })
+          });
+          const rows = document.getElementById('customerRows');
+          rows.replaceChildren();
+          (data.customers || []).forEach(customer => {
+            const row = document.createElement('tr');
+            const bonusCycle = Number(customer.card.bonus_cycle_balance ?? customer.card.bonus_balance ?? 0).toFixed(2);
+            const bonusCarryover = Number(customer.card.bonus_carryover || 0).toFixed(2);
+            row.dataset.bonusCycle = bonusCycle;
+            row.dataset.bonusCarryover = bonusCarryover;
+            const values = [
+              customer.account_name || '—',
+              customer.phone || '—',
+              String(customer.card.stamps_count || 0),
+              t('{{amount}} AZN (+ {{carryover}} AZN keçmişdən bonus)', {
+                amount: bonusCycle,
+                carryover: bonusCarryover
+              }),
+              customer.created_at ? new Date(customer.created_at).toLocaleDateString(
+                window.DaimiI18n.getLanguage() === 'ru' ? 'ru-RU' : window.DaimiI18n.getLanguage() === 'en' ? 'en-US' : 'az-AZ'
+              ) : '—'
+            ];
+            values.forEach(value => {
+              const cell = document.createElement('td');
+              cell.textContent = value;
+              row.appendChild(cell);
+            });
+            rows.appendChild(row);
+          });
+          filterCustomerRows();
+        } catch (error) {
+          document.getElementById('customerRows').replaceChildren();
+          showMessage(message, error.message || 'Müştəri siyahısı yüklənmədi.', true);
+        }
+      }
+
+      document.getElementById('adminLoginForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const loginButton = document.getElementById('adminLoginBtn');
+        const message = document.getElementById('adminLoginMsg');
+        adminCode = document.getElementById('adminCodeInput').value.trim();
+        if (!adminCode) {
+          showMessage(message, 'Restoran, admin kodu və personel PİN kodu tələb olunur.', true);
+          return;
+        }
+        loginButton.disabled = true;
+        showMessage(message, '', false);
+        try {
+          const data = await requestJson('/.netlify/functions/admin-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug, accessCode: adminCode, pin: cashierPin })
+          });
+          if (!data || !data.restaurant) {
+            throw new Error(data?.error || 'Admin panelinə giriş alınmadı.');
+          }
+          restaurant = { ...restaurant, ...data.restaurant };
+          fillSettings(restaurant);
+          document.getElementById('adminLogin').classList.add('hidden');
+          document.getElementById('adminContent').classList.remove('hidden');
+          await loadCustomers();
+        } catch (error) {
+          showMessage(message, error.message || 'Admin panelinə giriş alınmadı.', true);
+        } finally {
+          loginButton.disabled = false;
+        }
+      });
+
+      document.getElementById('adminLogoutBtn').addEventListener('click', () => {
+        adminCode = '';
+        document.getElementById('adminCodeInput').value = '';
+        document.getElementById('adminContent').classList.add('hidden');
+        document.getElementById('adminLogin').classList.remove('hidden');
+      });
+
+      document.getElementById('settingsForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = document.getElementById('saveSettingsBtn');
+        const message = document.getElementById('settingsMsg');
+        clearSettingsFieldErrors();
+        showMessage(message, '', false);
+        if (!validateSettingsFields()) {
+          showMessage(message, 'Zəhmət olmasa xətalı sahələri düzəldin.', true);
+          return;
+        }
+
+        let menu;
+        try {
+          menu = JSON.parse(document.getElementById('menuInput').value || '[]');
+          if (!menu || typeof menu !== 'object') throw new Error('Menyu JSON obyekt və ya siyahı olmalıdır.');
+        } catch (error) {
+          const menuError = `Menyu JSON xətası: ${error.message}`;
+          showSettingsFieldError('menuInput', menuError);
+          showMessage(message, menuError, true);
+          return;
+        }
+        const bonusMode = document.getElementById('bonusModeInput').value;
+        const bonusValue = Number(document.getElementById('bonusValueInput').value);
+        const payload = {
+          slug,
+          accessCode: adminCode,
+          current_pin: cashierPin,
+          stamp_goal: Number(document.getElementById('stampGoalInput').value),
+          cashier_pin: document.getElementById('cashierPinInput').value.trim() || cashierPin,
+          bonus_mode: bonusMode,
+          bonus_fixed_amount: bonusMode === 'fixed' ? bonusValue : undefined,
+          bonus_percent: bonusMode === 'percent' ? bonusValue : undefined,
+          reward_text: document.getElementById('rewardTextInput').value.trim(),
+          name: document.getElementById('restaurantNameInput').value.trim(),
+          about: document.getElementById('aboutInput').value.trim(),
+          address: document.getElementById('addressInput').value.trim(),
+          phone: document.getElementById('restaurantPhoneInput').value.trim(),
+          instagram: document.getElementById('instagramInput').value.trim(),
+          menu_json: menu
+        };
+        button.disabled = true;
+        showMessage(message, '', false);
+        try {
+          const data = await requestJson('/.netlify/functions/update-restaurant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!data || !data.restaurant) {
+            throw new Error(data?.error || 'Dəyişiklikləri yadda saxlamaq alınmadı.');
+          }
+          restaurant = { ...restaurant, ...data.restaurant };
+          cashierPin = payload.cashier_pin;
+          fillSettings(restaurant);
+          showMessage(message, 'Dəyişikliklər yadda saxlanıldı.', false);
+        } catch (error) {
+          const errorText = error.message || 'Dəyişiklikləri yadda saxlamaq alınmadı.';
+          showSettingsFieldError(error.field, errorText);
+          showMessage(message, errorText, true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      window.addEventListener('pagehide', () => {
+        if (scanner && scanner.isScanning) scanner.stop();
+      });
+    })();
+  </script>
+</body>
+</html>
