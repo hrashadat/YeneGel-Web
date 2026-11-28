@@ -35,6 +35,10 @@ exports.handler = async event => {
     const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
     const accountName = typeof body.account_name === 'string' ? normalizeAccountName(body.account_name) : '';
     const accessCode = typeof body.access_code === 'string' ? body.access_code : '';
+    const rawPhone = typeof body.phone === 'string' ? body.phone : '';
+    const phoneDigits = rawPhone.replace(/\D/g, '');
+    const phoneLocal = phoneDigits.startsWith('994') ? phoneDigits.slice(3) : phoneDigits.startsWith('0') ? phoneDigits.slice(1) : phoneDigits;
+    if (rawPhone && !/^\d{9}$/.test(phoneLocal)) return jsonResponse(400, { error: 'Telefon nömrəsi +994 formatında 9 rəqəm olmalıdır.' });
     const legacyToken = typeof body.legacy_visitor_token === 'string' ? body.legacy_visitor_token.trim() : '';
     if (!isValidRestaurantSlug(slug) || legacyToken.length > 180) {
       return jsonResponse(400, { error: 'Sorğu məlumatı etibarsızdır.' });
@@ -85,6 +89,13 @@ exports.handler = async event => {
     }
     if (!customer || !codeMatches) {
       return jsonResponse(401, { error: 'Hesab adı və ya kod yanlışdır.' });
+    }
+    if (phoneLocal && customerColumns.has('phone')) {
+      const normalizedPhone = `+994${phoneLocal}`;
+      await sbFetch(url, key, `customers?id=eq.${encodeURIComponent(customer.id)}`, {
+        method: 'PATCH', body: JSON.stringify({ phone: normalizedPhone })
+      });
+      customer.phone = normalizedPhone;
     }
 
     await ensureCustomerCard(url, key, restaurant.id, customer.id, legacyToken);

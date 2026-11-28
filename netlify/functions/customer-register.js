@@ -34,6 +34,11 @@ exports.handler = async event => {
     const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
     const accountName = typeof body.account_name === 'string' ? normalizeAccountName(body.account_name) : '';
     const accessCode = typeof body.access_code === 'string' ? body.access_code : '';
+    const rawPhone = typeof body.phone === 'string' ? body.phone : '';
+    const phoneDigits = rawPhone.replace(/\D/g, '');
+    const phoneLocal = phoneDigits.startsWith('994') ? phoneDigits.slice(3) : phoneDigits.startsWith('0') ? phoneDigits.slice(1) : phoneDigits;
+    if (!/^\d{9}$/.test(phoneLocal)) return jsonResponse(400, { error: 'Telefon nömrəsi +994 formatında 9 rəqəm olmalıdır.' });
+    const phone = `+994${phoneLocal}`;
     const legacyToken = typeof body.legacy_visitor_token === 'string' ? body.legacy_visitor_token.trim() : '';
     if (!isValidRestaurantSlug(slug) || legacyToken.length > 180) {
       return jsonResponse(400, { error: 'Sorğu məlumatı etibarsızdır.' });
@@ -82,7 +87,7 @@ exports.handler = async event => {
     });
     if (customerColumns.has('first_name')) customerData.first_name = accountName;
     if (customerColumns.has('last_name')) customerData.last_name = '';
-    if (customerColumns.has('phone')) customerData.phone = null;
+    if (customerColumns.has('phone')) customerData.phone = phone;
     const responseColumns = ['id', accountColumn, 'first_name', 'last_name', 'phone']
       .filter(column => customerColumns.has(column));
     let customer;

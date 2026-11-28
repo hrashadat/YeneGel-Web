@@ -39,9 +39,7 @@ exports.handler = async (event) => {
     const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
     const accessCodeValue = body.accessCode ?? body.adminCode ?? body.admin_code;
     const accessCode = typeof accessCodeValue === 'string' ? accessCodeValue.trim() : '';
-    const currentPin = typeof body.current_pin === 'string' ? body.current_pin.trim() : '';
-
-    if (!isValidRestaurantSlug(slug) || !accessCode || !isBoundedString(accessCode, 256) || !/^\d{4}$/.test(currentPin)) {
+    if (!isValidRestaurantSlug(slug) || !accessCode || !isBoundedString(accessCode, 256)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Slug, admin kodu və cari personel PİN kodu tələb olunur.' }) };
     }
 
@@ -51,6 +49,8 @@ exports.handler = async (event) => {
     const stampGoal = /^\d+$/.test(stampGoalValue) ? Number(stampGoalValue) : NaN;
     const cashierPin = typeof body.cashier_pin === 'string' ? body.cashier_pin.trim() : '';
     const bonusMode = typeof body.bonus_mode === 'string' ? body.bonus_mode.trim().toLowerCase() : '';
+    const campaignHours = Number(body.campaign_default_hours ?? 1);
+    const campaignMessage = typeof body.campaign_default_message === 'string' ? body.campaign_default_message.trim() : '';
 
     if (!Number.isInteger(stampGoal) || stampGoal < 1 || stampGoal > 20) {
       return fieldError('stampGoalInput', 'Möhür sayı 1-20 arası tam ədəd olmalıdır.');
@@ -59,8 +59,11 @@ exports.handler = async (event) => {
     if (bonusMode !== 'fixed' && bonusMode !== 'percent') {
       return fieldError('bonusModeInput', 'Bonus rejimi düzgün seçilməyib.');
     }
+    if (!Number.isInteger(campaignHours) || campaignHours < 1 || campaignHours > 720 || campaignMessage.length > 2000) {
+      return fieldError('campaignDefaultHoursInput', 'Kampaniya müddəti 1–720 saat olmalı, mətn 2000 simvoldan çox olmamalıdır.');
+    }
 
-    if (!/^\d{4}$/.test(cashierPin)) {
+    if (cashierPin && !/^\d{4}$/.test(cashierPin)) {
       return fieldError('cashierPinInput', 'Kassir PİN kodu 4 rəqəm olmalıdır.');
     }
 
@@ -118,22 +121,21 @@ exports.handler = async (event) => {
     if (!constantTimeEqual(String(existing.admin_code || '').trim(), accessCode)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Xüsusi giriş kodu yanlışdır.' }) };
     }
-    if (!constantTimeEqual(String(existing.pin_code || '').trim(), currentPin)) {
-      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Personel PİN kodu yanlışdır.' }) };
-    }
 
     const patchPayload = {
       stamp_goal: stampGoal,
-      pin_code: cashierPin,
       bonus_mode: bonusMode,
       reward_text: String(body.reward_text ?? 'BONUS').trim(),
       name: String(body.name ?? '').trim(),
       about: String(body.about ?? '').trim(),
       address: String(body.address ?? '').trim(),
       phone: String(body.phone ?? '').trim(),
-      instagram: String(body.instagram ?? '').trim()
+      instagram: String(body.instagram ?? '').trim(),
+      campaign_default_hours: campaignHours,
+      campaign_default_message: campaignMessage
     };
     if (body.menu_json !== undefined) patchPayload.menu_json = body.menu_json;
+    if (cashierPin) patchPayload.pin_code = cashierPin;
 
     patchPayload[bonusMode === 'percent' ? 'bonus_percent' : 'bonus_fixed_amount'] = bonusValue;
 

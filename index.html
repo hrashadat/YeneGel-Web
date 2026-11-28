@@ -728,6 +728,10 @@
           <input id="loginAccountNameInput" class="input" type="text" inputmode="email" minlength="3" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Hesab adınızı daxil edin" required />
         </div>
         <div class="field">
+          <label for="loginPhoneInput">Telefon nömrəsi (+994, istəyə görə)</label>
+          <input id="loginPhoneInput" class="input" type="tel" inputmode="tel" autocomplete="tel" maxlength="24" placeholder="+994 50 123 45 67" />
+        </div>
+        <div class="field">
           <label for="loginAccessCodeInput">Kod (4–32 simvol)</label>
           <div class="code-input-wrap">
             <input id="loginAccessCodeInput" class="input" type="password" minlength="4" maxlength="32" autocomplete="current-password" placeholder="Kodunuzu daxil edin" required />
@@ -746,6 +750,10 @@
         <div class="field">
           <label for="accountNameInput">Hesab adı</label>
           <input id="accountNameInput" class="input" type="text" inputmode="email" minlength="3" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Yeni hesab adı yaradın" required />
+        </div>
+        <div class="field">
+          <label for="customerPhoneInput">Telefon nömrəsi (+994)</label>
+          <input id="customerPhoneInput" class="input" type="tel" inputmode="tel" autocomplete="tel" maxlength="24" placeholder="+994 50 123 45 67" required />
         </div>
         <div class="field">
           <label for="accessCodeInput">Öz kodunuz (4–32 simvol)</label>
@@ -846,6 +854,13 @@
         console.warn('BroadcastChannel aktivləşdirilmədi:', error);
       }
       let customer = null;
+      function normalizeCustomerPhone(value) {
+        const digits = String(value || '').replace(/\D/g, '');
+        const local = digits.startsWith('994') ? digits.slice(3) : digits.startsWith('0') ? digits.slice(1) : digits;
+        if (!local) return '';
+        if (!/^\d{9}$/.test(local)) throw new Error('Telefon nömrəsi +994 formatında 9 rəqəm olmalıdır.');
+        return `+994${local}`;
+      }
       let cardPollTimer = null;
       let cardRefreshPromise = null;
       let cardRefreshQueued = false;
@@ -1189,6 +1204,7 @@
               slug,
               account_name: document.getElementById('loginAccountNameInput').value.trim(),
               access_code: document.getElementById('loginAccessCodeInput').value,
+              phone: normalizeCustomerPhone(document.getElementById('loginPhoneInput').value),
               legacy_visitor_token: getLegacyVisitorToken()
             })
           }, false);
@@ -1215,6 +1231,7 @@
               slug,
               account_name: document.getElementById('accountNameInput').value.trim(),
               access_code: document.getElementById('accessCodeInput').value,
+              phone: normalizeCustomerPhone(document.getElementById('customerPhoneInput').value),
               legacy_visitor_token: getLegacyVisitorToken()
             })
           }, false);

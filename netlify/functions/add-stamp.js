@@ -62,10 +62,16 @@ exports.handler = async event => {
         body: JSON.stringify({ error: 'Möhür əməliyyatı tamamlandı, lakin yenilənmiş kart alınmadı.' })
       };
     }
+    const committedCards = await sbFetch(
+      url,
+      key,
+      `loyalty_cards?id=eq.${encodeURIComponent(result.card.id)}&select=*`
+    );
+    const committedCard = committedCards?.[0] || result.card;
     return {
       statusCode: 200,
       headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' },
-      body: JSON.stringify({ ...result, card: normalizeCard(restaurant, result.card) })
+      body: JSON.stringify({ ...result, card: normalizeCard(restaurant, committedCard) })
     };
   } catch (error) {
     console.error('add-stamp error:', error);

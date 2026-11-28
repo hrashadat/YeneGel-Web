@@ -30,9 +30,8 @@ exports.handler = async (event) => {
     const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
     const accessCodeValue = body.accessCode ?? body.adminCode ?? body.admin_code;
     const accessCode = typeof accessCodeValue === 'string' ? accessCodeValue.trim() : '';
-    const cashierPin = typeof body.pin === 'string' ? body.pin.trim() : '';
 
-    if (!isValidRestaurantSlug(slug) || !accessCode || !isBoundedString(accessCode, 256) || !/^\d{4}$/.test(cashierPin)) {
+    if (!isValidRestaurantSlug(slug) || !accessCode || !isBoundedString(accessCode, 256)) {
       return {
         statusCode: 400,
         headers: JSON_HEADERS,
@@ -44,7 +43,7 @@ exports.handler = async (event) => {
     const rows = await sbFetch(
       url,
       key,
-      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,slug,name,pin_code,admin_code,stamp_goal,reward_text,about,address,phone,instagram,menu_json,bonus_mode,bonus_fixed_amount,bonus_percent`
+      `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=id,slug,name,pin_code,admin_code,stamp_goal,reward_text,about,address,phone,instagram,menu_json,bonus_mode,bonus_fixed_amount,bonus_percent,campaign_default_hours,campaign_default_message`
     );
 
     const restaurant = rows?.[0];
@@ -69,13 +68,6 @@ exports.handler = async (event) => {
         statusCode: 401,
         headers: JSON_HEADERS,
         body: JSON.stringify({ error: 'Admin giriş kodu yanlışdır.' })
-      };
-    }
-    if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), cashierPin)) {
-      return {
-        statusCode: 401,
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ error: 'Personel PİN kodu yanlışdır.' })
       };
     }
 
