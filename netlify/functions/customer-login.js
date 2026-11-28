@@ -3,8 +3,6 @@ const { ensureCustomerCard } = require('../lib/customer-cards');
 const {
   getCustomerColumns,
   isValidAccessCode,
-  isValidAccountName,
-  normalizeAccountName,
   resolveCustomerSchemaColumns,
   verifyAccessCode
 } = require('../lib/customer-credentials');
@@ -12,6 +10,7 @@ const { normalizeCard } = require('../lib/loyalty');
 const { encodeQueryValue, isValidRestaurantSlug, parseJsonObject } = require('../lib/request');
 const { getSupabaseConfig, getSupabaseErrorMessage, sbFetch } = require('../lib/supabase');
 const { secureHandler } = require('../lib/security');
+const { normalizeAzerbaijanPhone } = require('../lib/phone');
 
 function jsonResponse(statusCode, body) {
   return {
@@ -33,17 +32,15 @@ exports.handler = async event => {
     }
 
     const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
-    const accountName = typeof body.account_name === 'string' ? normalizeAccountName(body.account_name) : '';
+    const accountName = typeof body.account_name === 'string' ? body.account_name.trim() : '';
     const accessCode = typeof body.access_code === 'string' ? body.access_code : '';
+    const rawPhone = typeof body.phone === 'string' ? body.phone : '';
+    const phone = normalizeAzerbaijanPhone(rawPhone);
     const legacyToken = typeof body.legacy_visitor_token === 'string' ? body.legacy_visitor_token.trim() : '';
     if (!isValidRestaurantSlug(slug) || legacyToken.length > 180) {
       return jsonResponse(400, { error: 'Sorğu məlumatı etibarsızdır.' });
     }
-    if (!isValidAccountName(accountName)) {
-      return jsonResponse(400, {
-        error: 'Hesab adında hərf, rəqəm, boşluq, nöqtə, tire və alt xətt istifadə edin.'
-      });
-    }
+    if (!phone && !accountName) return jsonResponse(400, { error: 'Telefon nömrəsi və giriş kodu tələb olunur.' });
     if (!isValidAccessCode(accessCode)) {
       return jsonResponse(400, { error: 'Kod 4–32 simvoldan ibarət olmalıdır.' });
     }
@@ -68,12 +65,18 @@ exports.handler = async event => {
       ...['first_name', 'last_name', 'phone'].filter(column => customerColumns.has(column))
     ];
 
-    const customers = await sbFetch(
-      url,
-      key,
-      `customers?restaurant_id=eq.${encodeQueryValue(restaurant.id)}&${accountColumn}=eq.${encodeQueryValue(accountName)}&select=${selectColumns.join(',')}`
-    );
-    const customer = customers?.[0];
+    let customer = null;
+    if (phone && customerColumns.has('phone')) {
+      const candidates = [...new Set([phone, `+994${phone}`, `0${phone}`])];
+      for (const candidate of candidates) {
+        const matches = await sbFetch(url, key, `customers?restaurant_id=eq.${encodeQueryValue(restaurant.id)}&phone=eq.${encodeQueryValue(candidate)}&select=${selectColumns.join(',')}`);
+        if (matches?.[0]) { customer = matches[0]; break; }
+      }
+    } else if (accountName) {
+      const { accountColumn } = resolveCustomerSchemaColumns(customerColumns);
+      const matches = await sbFetch(url, key, `customers?restaurant_id=eq.${encodeQueryValue(restaurant.id)}&${accountColumn}=eq.${encodeQueryValue(accountName)}&select=${selectColumns.join(',')}`);
+      customer = matches?.[0] || null;
+    }
     let codeMatches = false;
     if (customer) {
       for (const column of credentialColumns) {
@@ -84,7 +87,7 @@ exports.handler = async event => {
       }
     }
     if (!customer || !codeMatches) {
-      return jsonResponse(401, { error: 'Hesab adı və ya kod yanlışdır.' });
+      return jsonResponse(401, { error: 'Telefon nömrəsi və ya kod yanlışdır.' });
     }
 
     await ensureCustomerCard(url, key, restaurant.id, customer.id, legacyToken);
@@ -96,7 +99,7 @@ exports.handler = async event => {
     const card = cards?.[0];
     if (!card) throw new Error('Müştəri kartı hazırlana bilmədi.');
 
-    const resolvedAccountName = customer[accountColumn] || customer.account_name || customer.username || accountName;
+    const resolvedAccountName = customer.account_name || customer.username || phone || accountName;
     return jsonResponse(200, {
       customer: {
         id: customer.id,
@@ -109,7 +112,7 @@ exports.handler = async event => {
     });
   } catch (error) {
     console.error('customer-login error:', error);
-    return jsonResponse(500, {
+    return jsonResponse(['42703', '42P01', 'PGRST204'].includes(error.code) ? 503 : 500, {
       error: getSupabaseErrorMessage(error),
       code: error.code || 'SERVER_ERROR'
     });

@@ -79,6 +79,12 @@ async function sbFetch(url, key, path, options = {}) {
 }
 
 function getSupabaseErrorMessage(error) {
+  if (['42703', 'PGRST204'].includes(error?.code)) {
+    return 'Supabase sxemində tələb olunan sütun yoxdur. 20261128200000_customer_phones_campaigns.sql migration-ını tətbiq edin.';
+  }
+  if (error?.code === '42P01') {
+    return 'Supabase-də tələb olunan kampaniya cədvəli yoxdur. 20261128200000_customer_phones_campaigns.sql migration-ını tətbiq edin.';
+  }
   if (error?.code === '42501') {
     return 'Supabase cədvəl icazəsi yoxdur. service_role GRANT migration-ını Supabase SQL Editor-də tətbiq edin.';
   }

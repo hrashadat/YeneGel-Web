@@ -16,8 +16,7 @@ exports.handler = async event => {
     const slug = typeof body.slug === 'string' ? body.slug.trim().toLowerCase() : '';
     const accessCodeValue = body.accessCode ?? body.adminCode ?? body.admin_code;
     const accessCode = typeof accessCodeValue === 'string' ? accessCodeValue.trim() : '';
-    const cashierPin = typeof body.pin === 'string' ? body.pin.trim() : '';
-    if (!isValidRestaurantSlug(slug) || !accessCode || !isBoundedString(accessCode, 256) || !/^\d{4}$/.test(cashierPin)) {
+    if (!isValidRestaurantSlug(slug) || !accessCode || !isBoundedString(accessCode, 256)) {
       return { statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Restoran, admin kodu və personel PİN kodu tələb olunur.' }) };
     }
 
@@ -37,9 +36,6 @@ exports.handler = async event => {
     if (!constantTimeEqual(String(restaurant.admin_code || '').trim(), accessCode)) {
       return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Admin giriş kodu yanlışdır.' }) };
     }
-    if (!constantTimeEqual(String(restaurant.pin_code || '').trim(), cashierPin)) {
-      return { statusCode: 401, headers: JSON_HEADERS, body: JSON.stringify({ error: 'Personel PİN kodu yanlışdır.' }) };
-    }
 
     const customers = await sbFetch(
       url,
@@ -49,7 +45,7 @@ exports.handler = async event => {
     const cards = await sbFetch(
       url,
       key,
-      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&select=visitor_token,stamps_count,reward_unlocked,bonus_balance,bonus_carryover,total_spent`
+      `loyalty_cards?restaurant_id=eq.${encodeURIComponent(restaurant.id)}&select=visitor_token,stamps_count,reward_unlocked,bonus_balance,bonus_carryover,total_spent,last_stamped_at`
     );
     const cardsByCustomerId = new Map((cards || []).map(card => [card.visitor_token, card]));
     return {
@@ -58,6 +54,7 @@ exports.handler = async event => {
       body: JSON.stringify({
         customers: (customers || []).map(customer => ({
           ...customer,
+          full_name: [customer.first_name, customer.last_name].filter(Boolean).join(' ') || customer.account_name || '—',
           card: normalizeCard(
             restaurant,
             cardsByCustomerId.get(customer.id) || {
@@ -75,7 +72,7 @@ exports.handler = async event => {
   } catch (err) {
     console.error('admin-customers error:', err);
     return {
-      statusCode: 500,
+      statusCode: ['42703', '42P01', 'PGRST204'].includes(err.code) ? 503 : 500,
       headers: JSON_HEADERS,
       body: JSON.stringify({ error: getSupabaseErrorMessage(err), code: err.code || 'SERVER_ERROR' })
     };
