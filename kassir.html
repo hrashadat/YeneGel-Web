@@ -45,7 +45,7 @@
     button { font: inherit; }
     input, textarea, select { font: inherit; font-size: 16px; }
     .app { width: min(100%, 760px); margin: 0 auto; display: grid; gap: 16px; }
-    .app.admin-expanded { width: min(100%, 920px); grid-template-columns: minmax(0, 1fr); }
+    .app.admin-expanded { width: min(100%, 1040px); grid-template-columns: minmax(0, 1fr); }
     .app.admin-expanded > * { min-width: 0; }
     .slug-error { width: min(100%, 760px); margin: auto; }
     .topbar, .top-actions, .tabs, .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -238,12 +238,58 @@
     #adminPanel table { font-size: 13px; }
     #adminPanel th, #adminPanel td { padding: 10px 12px; }
     #adminPanel th { font-size: 11px; }
-    .customer-search-field { max-width: 420px; margin: 14px 0 12px; }
+    .customer-filters {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0 16px;
+      margin: 14px 0 10px;
+    }
+    .customer-filters .field { min-width: 0; margin-bottom: 12px; }
+    .range-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .customer-search-field { max-width: none; margin: 0 0 12px; }
+    .customer-selection {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: fit-content;
+      margin: 2px 0 18px;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .customer-selection input { width: 16px; height: 16px; accent-color: var(--accent); }
+    .campaign-panel {
+      margin: 8px 0 18px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--soft);
+    }
+    .campaign-panel .title { margin-bottom: 4px; }
+    .campaign-panel .sub { margin-bottom: 14px; }
+    .campaign-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, .65fr); gap: 0 14px; }
+    .campaign-message-field, .campaign-actions { grid-column: 1 / -1; }
+    .campaign-panel textarea.input { min-height: 100px; font-family: inherit; line-height: 1.5; }
+    .campaign-actions { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(210px, 1fr); gap: 10px; }
+    .campaign-actions .btn { width: 100%; min-height: 44px; }
+    #campaignLinks { overflow-wrap: anywhere; }
+    @media (max-width: 700px) {
+      .customer-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+      .customer-search-field { grid-column: 1 / -1; }
+      #customStampRange { grid-column: 1 / -1; }
+    }
     @media (max-width: 520px) {
       body { padding: 16px 12px 34px; }
       .card { padding: 17px; }
       .app.admin-expanded { width: 100%; }
       #adminPanel .input { font-size: 16px; }
+      .campaign-panel { padding: 15px; }
+      .campaign-fields { grid-template-columns: 1fr 1fr; gap: 0 10px; }
+      .campaign-actions { grid-template-columns: 1fr; }
       #settingsForm { grid-template-columns: 1fr; }
       #settingsForm .settings-menu-field,
       #settingsForm #saveSettingsBtn { grid-column: 1; }
@@ -307,11 +353,6 @@
     </section>
 
     <main id="workspace" class="hidden">
-      <nav class="tabs" aria-label="Panel bölmələri">
-        <button class="tab active" data-panel="cashierPanel" type="button">Personel skaneri</button>
-        <button class="tab" data-panel="adminPanel" type="button">Admin paneli</button>
-      </nav>
-
       <section id="cashierPanel" class="card">
         <h1 class="title">Personel skaner paneli</h1>
         <p class="sub">Müştərinin QR kodunu kameraya göstərin. Kamera icazəsi üçün sayt HTTPS üzərindən açılmalıdır.</p>
@@ -435,16 +476,48 @@
           </section><section id="adminCustomersSection" class="hidden">
           <h2 class="title">Müştəri siyahısı</h2>
           <p class="sub">Son 500 qeydiyyatdan keçmiş müştəri və onların cari kart balansı.</p>
-          <div class="field customer-search-field">
-            <label for="customerSearchInput">Müştərilərdə axtar</label>
-            <input id="customerSearchInput" class="input" type="search" autocomplete="off" placeholder="Ad Soyad və ya telefonla axtar" />
+          <div class="customer-filters">
+            <div class="field customer-search-field">
+              <label for="customerSearchInput">Müştərilərdə axtar</label>
+              <input id="customerSearchInput" class="input" type="search" autocomplete="off" placeholder="Ad Soyad və ya telefonla axtar" />
+            </div>
+            <div class="field">
+              <label for="stampFilter">Çərtik filtri</label>
+              <select id="stampFilter" class="input"><option value="all">Hamısı</option><option value="0">0 çərtik</option><option value="1-2">1–2</option><option value="3-5">3–5</option><option value="5-10">5–10</option><option value="10+">10+</option><option value="bonus">Bonusu olanlar</option><option value="oneleft">Son 1 çərtik qalanlar</option><option value="custom">Xüsusi aralıq</option></select>
+            </div>
+            <div class="field">
+              <label for="customerSort">Sıralama</label>
+              <select id="customerSort" class="input"><option value="none">Standart</option><option value="spent">Ümumi xərcləmə</option><option value="remaining">Bonusa qalan məbləğ</option><option value="stamps">Çərtik sayı</option></select>
+            </div>
+            <div class="field" id="customStampRange" style="display:none">
+              <label>Çərtik aralığı (min–max)</label>
+              <div class="range-inputs"><input id="stampMin" class="input" type="number" min="0" placeholder="Min"/><input id="stampMax" class="input" type="number" min="0" placeholder="Max"/></div>
+            </div>
           </div>
-          <div class="field"><label for="stampFilter">Çərtik filtri</label><select id="stampFilter" class="input"><option value="all">Hamısı</option><option value="0">0 çərtik</option><option value="1-2">1–2</option><option value="3-5">3–5</option><option value="5-10">5–10</option><option value="10+">10+</option><option value="bonus">Bonusu olanlar</option><option value="oneleft">Son 1 çərtik qalanlar</option><option value="custom">Xüsusi aralıq</option></select></div>
-          <div class="field" id="customStampRange" style="display:none"><label>Çərtik aralığı (min–max)</label><div style="display:flex;gap:8px"><input id="stampMin" class="input" type="number" min="0" placeholder="Min"/><input id="stampMax" class="input" type="number" min="0" placeholder="Max"/></div></div>
-          <div class="field"><label for="customerSort">Sıralama</label><select id="customerSort" class="input"><option value="none">Standart</option><option value="spent">Ümumi xərcləmə</option><option value="remaining">Bonusa qalan məbləğ</option><option value="stamps">Çərtik sayı</option></select></div>
-          <label><input id="selectVisibleCustomers" type="checkbox"/> Filtrdəki müştəriləri seç</label>
-          <div class="field"><label for="campaignText">Kampaniya</label><select id="campaignType" class="input"><option value="double">2 qat bonus fürsəti</option></select><input id="campaignHours" class="input" type="number" min="1" step="1" required placeholder="Müddət (saat, məcburi)"/><textarea id="campaignText" class="input" rows="3" placeholder="Mesaj mətni — avtomatik hazırlanır"></textarea><button id="prepareCampaignBtn" class="btn btn-primary" type="button">Linkləri hazırla və kampaniyanı aktiv et</button><button id="copyCampaignBtn" class="btn" type="button">Copy numbers &amp; message</button></div>
-          <div id="campaignLinks" class="msg"></div>
+          <label class="customer-selection"><input id="selectVisibleCustomers" type="checkbox"/> <span>Filtrdəki müştəriləri seç</span></label>
+          <section class="campaign-panel" aria-labelledby="campaignPanelTitle">
+            <h3 id="campaignPanelTitle" class="title">Kampaniya</h3>
+            <p class="sub">Seçilmiş müştərilərə uyğun mesaj və paylaşım linkləri hazırla.</p>
+            <div class="campaign-fields">
+              <div class="field">
+                <label for="campaignType">Təklif</label>
+                <select id="campaignType" class="input"><option value="double">2 qat bonus fürsəti</option></select>
+              </div>
+              <div class="field">
+                <label for="campaignHours">Müddət (saat, məcburi)</label>
+                <input id="campaignHours" class="input" type="number" min="1" max="720" step="1" required placeholder="Məsələn, 1"/>
+              </div>
+              <div class="field campaign-message-field">
+                <label for="campaignText">Mesaj mətni</label>
+                <textarea id="campaignText" class="input" rows="3" placeholder="Mesaj mətni avtomatik hazırlanır"></textarea>
+              </div>
+              <div class="campaign-actions">
+                <button id="prepareCampaignBtn" class="btn btn-primary" type="button">Linkləri hazırla və kampaniyanı aktiv et</button>
+                <button id="copyCampaignBtn" class="btn" type="button">Copy numbers &amp; message</button>
+              </div>
+            </div>
+            <div id="campaignLinks" class="msg"></div>
+          </section>
           <div id="customerListMsg" class="msg"></div>
           <div class="table-wrap">
             <table>
@@ -833,6 +906,9 @@
           restaurant = data.restaurant;
           pinScreen.classList.add('hidden');
           workspace.classList.remove('hidden');
+          document.getElementById('cashierPanel').classList.remove('hidden');
+          document.getElementById('adminPanel').classList.add('hidden');
+          app.classList.remove('admin-expanded');
           document.getElementById('adminRestName').textContent = restaurant.name || 'Restoran ayarları';
           document.getElementById('adminSlug').textContent = t('Restoran kodu: {{slug}}', { slug: formatSlug(slug) });
           await startScanner();
@@ -843,25 +919,11 @@
         }
       });
 
-      document.querySelectorAll('.tab').forEach(button => {
-        button.addEventListener('click', async () => {
-          if (button.dataset.adminSection) {
-            document.getElementById('adminSettingsSection').classList.toggle('hidden', button.dataset.adminSection !== 'settings');
-            document.getElementById('adminCustomersSection').classList.toggle('hidden', button.dataset.adminSection !== 'customers');
-            document.querySelectorAll('[data-admin-section]').forEach(tab => tab.classList.toggle('active', tab === button));
-            return;
-          }
-          document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button));
-          document.getElementById('cashierPanel').classList.toggle('hidden', button.dataset.panel !== 'cashierPanel');
-          document.getElementById('adminPanel').classList.toggle('hidden', button.dataset.panel !== 'adminPanel');
-          app.classList.toggle('admin-expanded', button.dataset.panel === 'adminPanel');
-          if (button.dataset.panel === 'cashierPanel') {
-            selectedCustomer = null;
-            if (scannerStartPromise) await scannerStartPromise;
-            if (!scanner || !scanner.isScanning) await startScanner();
-          } else {
-            await stopScanner();
-          }
+      document.querySelectorAll('[data-admin-section]').forEach(button => {
+        button.addEventListener('click', () => {
+          document.getElementById('adminSettingsSection').classList.toggle('hidden', button.dataset.adminSection !== 'settings');
+          document.getElementById('adminCustomersSection').classList.toggle('hidden', button.dataset.adminSection !== 'customers');
+          document.querySelectorAll('[data-admin-section]').forEach(tab => tab.classList.toggle('active', tab === button));
         });
       });
 
@@ -870,7 +932,9 @@
         adminCode = document.getElementById('entryAdminCode').value.trim();
         document.getElementById('adminCodeInput').value = adminCode;
         pinScreen.classList.add('hidden'); workspace.classList.remove('hidden');
-        document.querySelector('.tabs [data-panel="adminPanel"]').click();
+        document.getElementById('cashierPanel').classList.add('hidden');
+        document.getElementById('adminPanel').classList.remove('hidden');
+        app.classList.add('admin-expanded');
         document.getElementById('adminLoginForm').requestSubmit();
       });
 
@@ -1414,6 +1478,10 @@
         document.getElementById('adminCodeInput').value = '';
         document.getElementById('adminContent').classList.add('hidden');
         document.getElementById('adminLogin').classList.remove('hidden');
+        workspace.classList.add('hidden');
+        document.getElementById('adminPanel').classList.add('hidden');
+        pinScreen.classList.remove('hidden');
+        document.getElementById('entryAdminForm').reset();
       });
 
       document.getElementById('settingsForm').addEventListener('submit', async event => {
